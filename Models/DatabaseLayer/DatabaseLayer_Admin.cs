@@ -8,6 +8,7 @@ namespace firstproject.Models.DatabaseLayer
         Task<List<AdminModel>> GetAllAdmins();
         Task<AdminModel> Add(AdminModel model);
         Task<AdminModel> Edit(int id, AdminModel model);
+        Task<IActionResult> Delete(int id);
     }
 
     public partial interface IDatabaseLayer
@@ -135,6 +136,31 @@ namespace firstproject.Models.DatabaseLayer
             }
 
             return model;
+        }
+
+        public async Task<IActionResult> Delete(int id)
+        {
+            using (var connection = new NpgsqlConnection(DbConnection))
+            {
+                await connection.OpenAsync();
+                var command = new NpgsqlCommand(
+                    @"DELETE FROM ""admin"" WHERE ""Id""=@Id", connection);
+                command.Parameters.AddWithValue("@Id", id);
+                var rows = await command.ExecuteNonQueryAsync();
+                if (rows == 0)
+                {
+                    return new NotFoundObjectResult(new
+                    {
+                        status = false,
+                        message = "Record not found"
+                    });
+                }
+                return new OkObjectResult(new
+                {
+                    status = true,
+                    message = "Record deleted successfully"
+                });
+            }
         }
     }
 }

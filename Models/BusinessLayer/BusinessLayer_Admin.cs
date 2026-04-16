@@ -9,6 +9,7 @@ namespace firstproject.Models.BusinessLayer
         Task<List<AdminModel>> GetAllAdmins();
         Task<AdminModel> Add(AdminModel model);
         Task<AdminModel> Edit(int id, AdminModel model);
+        Task<IActionResult> Delete(int id);
     }
 
     public partial class BusinessLayer : IBusinessLayer
@@ -27,6 +28,11 @@ namespace firstproject.Models.BusinessLayer
         public async Task<AdminModel> Edit(int id, AdminModel model)
         {
             return await _databaseLayer.Edit(id, model); 
+        }
+
+        public async Task<IActionResult> Delete(int id)
+        {
+            return await _databaseLayer.Delete(id);
         }
 
 
