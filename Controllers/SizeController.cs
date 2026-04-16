@@ -28,11 +28,27 @@ namespace firstproject.Controllers
 
         public async Task<IActionResult> AddSize([FromForm] Size size)
         {
-       
+
             var result = await _businessLayer.AddSize(size);
             return Ok(result);
         }
 
+        [HttpPut]
+        [Route("editsize/{id}")]
+        public async Task<IActionResult> EditSize(int id, [FromForm] Size size)
+        {
+            var result = await _businessLayer.EditSize(id, size);
+            return Ok(result);
 
+            //var result = await _businessLayer.EditSize(id, size);
+            //if (result== nu)
+            //{
+            //    return NotFound(new { message = "Size not found." });
+            //}
+            //else
+            //{
+            //    return Ok(new { message = "Size updated successfully." });
+            //}
+        }
     }
 }

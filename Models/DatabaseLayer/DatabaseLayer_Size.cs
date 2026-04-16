@@ -8,6 +8,7 @@ namespace firstproject.Models.DatabaseLayer
     {
         Task<List<Size>> GetSize();
         Task<IActionResult> AddSize([FromForm] Size size);
+        Task<IActionResult> EditSize(int id, [FromForm] Size size);
 
     }
     public partial interface IDatabaseLayer
@@ -74,5 +75,35 @@ namespace firstproject.Models.DatabaseLayer
                 }
             }
         }
+
+
+        public async Task<IActionResult> EditSize(int id, [FromForm] Size size)
+        {
+            using (var connection = new NpgsqlConnection(this.DbConnection))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(
+                    "UPDATE sizes SET size_name = @size_name, description = @description, is_active = @is_active WHERE id = @id",
+                    connection))
+                {
+                    command.Parameters.AddWithValue("@size_name", size.SizeName);
+                    command.Parameters.AddWithValue("@description", (object)size.Description ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@is_active", size.IsActive);
+                    command.Parameters.AddWithValue("@id", id);
+                    int rowsAffected = await command.ExecuteNonQueryAsync();
+                    if (rowsAffected > 0)
+                    {
+                        return new OkObjectResult(size);
+                    }
+                    else
+                    {
+                        return new NotFoundObjectResult("Size not found.");
+                    }
+                }
+            }
+        }
+
+
+
     }
 }
