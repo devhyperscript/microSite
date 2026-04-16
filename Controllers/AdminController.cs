@@ -57,6 +57,28 @@ namespace firstproject.Controllers
             });
         }
 
+        [HttpDelete("delete/{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var result = await _binessLayer.Delete(id);
+
+            if (result==null)
+            {
+                return NotFound(new
+                {
+                    status = false,
+                    message = "Record not found"
+                });
+            }
+            return Ok(new
+            {
+                status = true,
+                message = "Record deleted successfully"
+            });
+        }
+    }
 
     }
-}
+
+
+
