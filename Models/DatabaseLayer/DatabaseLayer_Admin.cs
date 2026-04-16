@@ -1,8 +1,11 @@
-﻿namespace firstproject.Models.DatabaseLayer
+﻿using Microsoft.AspNetCore.Mvc;
+
+namespace firstproject.Models.DatabaseLayer
 {
     public partial interface IDatabaseLayer
     {
         Task<List<AdminModel>> GetAllAdmins();
+        Task<IActionResult> Add([FromForm] AdminModel model);
     }
 
     public partial interface IDatabaseLayer
@@ -44,6 +47,39 @@
             }
 
             return admins;
+        }
+
+
+        public async Task<IActionResult> Add([FromForm] AdminModel model)
+        {
+            using (var connection = new Npgsql.NpgsqlConnection(DbConnection))
+            {
+                await connection.OpenAsync();
+
+                var command = new Npgsql.NpgsqlCommand(
+                    @"INSERT INTO ""admin"" 
+            (""FirstName"", ""LastName"", ""Phone"", ""Email"", ""PasswordHash"", ""CreatedAt"") 
+            VALUES 
+            (@FirstName, @LastName, @Phone, @Email, @PasswordHash, @CreatedAt) 
+            RETURNING ""Id""", connection);
+
+                command.Parameters.AddWithValue("@FirstName", model.FirstName);
+                command.Parameters.AddWithValue("@LastName", model.LastName);
+                command.Parameters.AddWithValue("@Phone", (object)model.Phone ?? DBNull.Value);
+                command.Parameters.AddWithValue("@Email", model.Email);
+                command.Parameters.AddWithValue("@PasswordHash", model.PasswordHash);
+                command.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
+
+                var newId = (int)await command.ExecuteScalarAsync();
+                model.Id = newId;
+            }
+
+            return Ok(new
+            {
+                status = true,
+                message = "Record successfully added",
+                data = model
+            });
         }
     }
 }
