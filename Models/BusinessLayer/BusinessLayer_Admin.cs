@@ -8,6 +8,8 @@ namespace firstproject.Models.BusinessLayer
     {
         Task<List<AdminModel>> GetAllAdmins();
         Task<IActionResult> Add([FromForm] AdminModel model);
+
+        Task<IActionResult> Edit([FromForm] AdminModel model);
     }
 
     public partial class  BusinessLayer : IBusinessLayer {
@@ -23,7 +25,12 @@ namespace firstproject.Models.BusinessLayer
             var result = await _databaseLayer.Add(model);
             return result;
         }
-    }
+
+        public async Task<IActionResult> Edit([FromForm] AdminModel model)
+        {
+            var result = await _databaseLayer.Edit(model);
+            return result;
+        }
     
 
 }
