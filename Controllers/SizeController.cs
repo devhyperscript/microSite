@@ -28,11 +28,17 @@ namespace firstproject.Controllers
 
         public async Task<IActionResult> AddSize([FromForm] Size size)
         {
-       
+
             var result = await _businessLayer.AddSize(size);
             return Ok(result);
         }
 
-
+        [HttpPut]
+        [Route("editsize")]
+        public async Task<IActionResult> EditSize([FromForm] Size size)
+        {
+            var result = await _businessLayer.EditSize(size);
+            return Ok(result);
+        }
     }
 }
