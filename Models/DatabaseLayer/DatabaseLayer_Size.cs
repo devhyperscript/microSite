@@ -7,6 +7,8 @@ namespace firstproject.Models.DatabaseLayer
    public  partial interface IDatabaseLayer
     {
         Task<List<Size>> GetSize();
+        Task<IActionResult> AddSize([FromForm] Size size);
+
     }
     public partial interface IDatabaseLayer
     {
@@ -45,6 +47,32 @@ namespace firstproject.Models.DatabaseLayer
             }
 
             return sizes;
+        }
+
+        public async Task<IActionResult> AddSize([FromForm] Size size)
+        {
+            using (var connection = new NpgsqlConnection(this.DbConnection))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(
+                    "INSERT INTO sizes (size_name, description, is_active) VALUES (@size_name, @description, @is_active) RETURNING id",
+                    connection))
+                {
+                    command.Parameters.AddWithValue("@size_name", size.SizeName);
+                    command.Parameters.AddWithValue("@description", (object)size.Description ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@is_active", size.IsActive);
+                    var newId = await command.ExecuteScalarAsync();
+                    if (newId != null)
+                    {
+                        size.Id = Convert.ToInt32(newId);
+                        return new OkObjectResult(size);
+                    }
+                    else
+                    {
+                        return new BadRequestObjectResult("Failed to add size.");
+                    }
+                }
+            }
         }
     }
 }

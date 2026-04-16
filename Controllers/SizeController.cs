@@ -21,5 +21,18 @@ namespace firstproject.Controllers
             var result = await _businessLayer.GetSize();
             return Ok(result);
         }
+
+
+        [HttpPost]
+        [Route("addsize")]
+
+        public async Task<IActionResult> AddSize([FromForm] Size size)
+        {
+       
+            var result = await _businessLayer.AddSize(size);
+            return Ok(result);
+        }
+
+
     }
 }
