@@ -12,13 +12,14 @@ namespace firstproject.Models.BusinessLayer
         Task<IActionResult> Edit([FromForm] AdminModel model);
     }
 
-    public partial class  BusinessLayer : IBusinessLayer {
+    public partial class BusinessLayer : IBusinessLayer
+    {
 
         public async Task<List<AdminModel>> GetAllAdmins()
         {
-            var result =  await _databaseLayer.GetAllAdmins();
+            var result = await _databaseLayer.GetAllAdmins();
             return result;
-        }   
+        }
 
         public async Task<IActionResult> Add([FromForm] AdminModel model)
         {
@@ -31,6 +32,7 @@ namespace firstproject.Models.BusinessLayer
             var result = await _databaseLayer.Edit(model);
             return result;
         }
+    }
     
 
 }

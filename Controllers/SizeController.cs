@@ -34,11 +34,21 @@ namespace firstproject.Controllers
         }
 
         [HttpPut]
-        [Route("editsize")]
-        public async Task<IActionResult> EditSize([FromForm] Size size)
+        [Route("editsize/{id}")]
+        public async Task<IActionResult> EditSize(int id, [FromForm] Size size)
         {
-            var result = await _businessLayer.EditSize(size);
+            var result = await _businessLayer.EditSize(id, size);
             return Ok(result);
+
+            //var result = await _businessLayer.EditSize(id, size);
+            //if (result== nu)
+            //{
+            //    return NotFound(new { message = "Size not found." });
+            //}
+            //else
+            //{
+            //    return Ok(new { message = "Size updated successfully." });
+            //}
         }
     }
 }

@@ -9,7 +9,7 @@ namespace firstproject.Models.BusinessLayer
         Task<List<Size>> GetSize();
         //Task<IActionResult> AddSize([FormBody])
             Task<IActionResult> AddSize([FromForm] Size size);
-        Task<IActionResult> EditSize([FromForm] Size size);
+        Task<IActionResult> EditSize(int id, [FromForm] Size size);
     }
 
     public partial class BusinessLayer : IBusinessLayer
@@ -26,9 +26,9 @@ namespace firstproject.Models.BusinessLayer
             return result;
         }
 
-        public async Task<IActionResult> EditSize([FromForm] Size size)
+        public async Task<IActionResult> EditSize(int id, [FromForm] Size size)
         {
-            var result = await _databaseLayer.EditSize(size);
+            var result = await _databaseLayer.EditSize(id, size);
             return result;
         }
     }
