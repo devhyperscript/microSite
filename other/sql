@@ -8,3 +8,10 @@ CREATE TABLE "Admin" (
     "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
+CREATE TABLE sizes (
+    id SERIAL PRIMARY KEY,
+    size_name VARCHAR(50) NOT NULL,
+    description VARCHAR(150),
+    is_active BOOLEAN DEFAULT TRUE
+);

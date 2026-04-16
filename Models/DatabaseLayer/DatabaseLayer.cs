@@ -5,11 +5,11 @@
 
     }
 
-    public partial class DataBaseLayer : IDatabaseLayer
+    public partial class DatabaseLayer : IDatabaseLayer
     {
         private readonly IConfiguration _configuration;
         private readonly string DbConnection;
-        public DataBaseLayer(IConfiguration configuration)
+        public DatabaseLayer(IConfiguration configuration)
         {
             this._configuration = configuration;
             this.DbConnection = this._configuration.GetConnectionString("AppDbContextConnection");

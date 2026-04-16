@@ -9,15 +9,14 @@ var connectionString = builder.Configuration.GetConnectionString("AppDbContextCo
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
-builder.Services.AddScoped<IBusinessLayer, BusinessLayer>();
-builder.Services.AddScoped<IDatabaseLayer, DataBaseLayer>();
-
 builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true).AddEntityFrameworkStores<AppDbContext>();
 
+// Add services to the container.
 
-
-// Add services to the containeradadadad.
 builder.Services.AddControllersWithViews();
+builder.Services.AddScoped<IDatabaseLayer, DatabaseLayer>();
+builder.Services.AddScoped<IBusinessLayer, BusinessLayer>();
+
 
 var app = builder.Build();
 
