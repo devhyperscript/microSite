@@ -7,6 +7,8 @@ namespace firstproject.Models.BusinessLayer
     public partial interface IBusinessLayer
     {
         Task<List<Size>> GetSize();
+        //Task<IActionResult> AddSize([FormBody])
+            Task<IActionResult> AddSize([FromForm] Size size);
     }
 
     public partial class BusinessLayer : IBusinessLayer
@@ -14,6 +16,12 @@ namespace firstproject.Models.BusinessLayer
         public async Task<List<Size>> GetSize()
         {
             var result = await _databaseLayer.GetSize();
+            return result;
+        }
+
+        public async Task<IActionResult> AddSize([FromForm] Size size)
+        {
+            var result = await _databaseLayer.AddSize(size);
             return result;
         }
     }

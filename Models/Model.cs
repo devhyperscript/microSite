@@ -10,7 +10,7 @@
         public string PasswordHash { get; set; }
         public DateTime CreatedAt { get; set; }
     }
-    public class Size
+      public class Size
     {
         public int Id { get; set; }
 
