@@ -1,5 +1,7 @@
 using firstproject.Areas.Identity.Data;
 using firstproject.Data;
+using firstproject.Models.BusinessLayer;
+using firstproject.Models.DatabaseLayer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
@@ -7,9 +9,14 @@ var connectionString = builder.Configuration.GetConnectionString("AppDbContextCo
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
+builder.Services.AddScoped<IBusinessLayer, BusinessLayer>();
+builder.Services.AddScoped<IDatabaseLayer, DataBaseLayer>();
+
 builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true).AddEntityFrameworkStores<AppDbContext>();
 
-// Add services to the container.
+
+
+// Add services to the containeradadadad.
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
