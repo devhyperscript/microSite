@@ -23,22 +23,40 @@ namespace firstproject.Controllers
         }
 
         [HttpPost("add")]
-
         public async Task<IActionResult> Add([FromForm] AdminModel model)
         {
-
             var result = await _binessLayer.Add(model);
-            return Ok(result);
 
+            return Ok(new
+            {
+                status = true,
+                message = "Record successfully added",
+                data = result
+            });
         }
 
-        [HttpPut("edit")]
-
-        public async Task<IActionResult> Edit([FromForm] AdminModel model)
+        [HttpPut("edit/{id}")]
+        public async Task<IActionResult> Edit(int id, [FromForm] AdminModel model)
         {
+            var result = await _binessLayer.Edit(id, model);
 
-            var result = await _binessLayer.Edit(model);
-            return Ok(result);
+            if (result == null)
+            {
+                return NotFound(new
+                {
+                    status = false,
+                    message = "Record not found"
+                });
+            }
+
+            return Ok(new
+            {
+                status = true,
+                message = "Record updated successfully",
+                data = result
+            });
         }
+
+
     }
 }

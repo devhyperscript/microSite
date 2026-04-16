@@ -1,13 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Npgsql;
 
 namespace firstproject.Models.DatabaseLayer
 {
     public partial interface IDatabaseLayer
     {
         Task<List<AdminModel>> GetAllAdmins();
-        Task<IActionResult> Add([FromForm] AdminModel model);
-
-        Task<IActionResult> Edit([FromForm] AdminModel model);
+        Task<AdminModel> Add(AdminModel model);
+        Task<AdminModel> Edit(int id, AdminModel model);
     }
 
     public partial interface IDatabaseLayer
@@ -52,56 +52,89 @@ namespace firstproject.Models.DatabaseLayer
         }
 
 
-        public async Task<IActionResult> Add([FromForm] AdminModel model)
+        public async Task<AdminModel> Add(AdminModel model)
         {
-            using (var connection = new Npgsql.NpgsqlConnection(DbConnection))
+            using (var connection = new NpgsqlConnection(DbConnection))
             {
                 await connection.OpenAsync();
-                var command = new Npgsql.NpgsqlCommand(
-                    @"INSERT INTO ""admin"" (""FirstName"", ""LastName"", ""Phone"", ""Email"", ""PasswordHash"", ""CreatedAt"") 
-              VALUES (@FirstName, @LastName, @Phone, @Email, @PasswordHash, @CreatedAt) 
-              RETURNING ""Id""", connection);
+
+                model.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.PasswordHash);
+
+                var command = new NpgsqlCommand(
+                    @"INSERT INTO ""admin"" 
+            (""FirstName"", ""LastName"", ""Phone"", ""Email"", ""PasswordHash"", ""CreatedAt"") 
+            VALUES 
+            (@FirstName, @LastName, @Phone, @Email, @PasswordHash, @CreatedAt) 
+            RETURNING ""Id""", connection);
+
                 command.Parameters.AddWithValue("@FirstName", model.FirstName);
                 command.Parameters.AddWithValue("@LastName", model.LastName);
                 command.Parameters.AddWithValue("@Phone", (object)model.Phone ?? DBNull.Value);
                 command.Parameters.AddWithValue("@Email", model.Email);
                 command.Parameters.AddWithValue("@PasswordHash", model.PasswordHash);
                 command.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
+
                 var newId = (int)await command.ExecuteScalarAsync();
                 model.Id = newId;
+                model.PasswordHash = null;
             }
-            return new OkObjectResult(model);
+
+            return model;
         }
 
 
-        public async Task<IActionResult> Edit([FromForm] AdminModel model)
+        public async Task<AdminModel> Edit(int id, AdminModel model)
         {
-            using (var connection = new Npgsql.NpgsqlConnection(DbConnection))
+            using (var connection = new NpgsqlConnection(DbConnection))
             {
                 await connection.OpenAsync();
-                var command = new Npgsql.NpgsqlCommand(
-                    @"UPDATE ""admin"" 
-              SET ""FirstName"" = @FirstName, 
-                  ""LastName"" = @LastName, 
-                  ""Phone"" = @Phone, 
-                  ""Email"" = @Email, 
-                  ""PasswordHash"" = @PasswordHash
-              WHERE ""Id"" = @Id", connection);
-                command.Parameters.AddWithValue("@Id", model.Id);
+
+                string query;
+
+                if (!string.IsNullOrEmpty(model.PasswordHash))
+                {
+                    model.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.PasswordHash);
+
+                    query = @"UPDATE ""admin"" 
+                      SET ""FirstName""=@FirstName,
+                          ""LastName""=@LastName,
+                          ""Phone""=@Phone,
+                          ""Email""=@Email,
+                          ""PasswordHash""=@PasswordHash
+                      WHERE ""Id""=@Id";
+                }
+                else
+                {
+                    query = @"UPDATE ""admin"" 
+                      SET ""FirstName""=@FirstName,
+                          ""LastName""=@LastName,
+                          ""Phone""=@Phone,
+                          ""Email""=@Email
+                      WHERE ""Id""=@Id";
+                }
+
+                var command = new NpgsqlCommand(query, connection);
+
+                command.Parameters.AddWithValue("@Id", id);
                 command.Parameters.AddWithValue("@FirstName", model.FirstName);
                 command.Parameters.AddWithValue("@LastName", model.LastName);
                 command.Parameters.AddWithValue("@Phone", (object)model.Phone ?? DBNull.Value);
                 command.Parameters.AddWithValue("@Email", model.Email);
-                command.Parameters.AddWithValue("@PasswordHash", model.PasswordHash);
-                var rowsAffected = await command.ExecuteNonQueryAsync();
-                if (rowsAffected == 0)
+
+                if (!string.IsNullOrEmpty(model.PasswordHash))
                 {
-                    return new NotFoundResult();
+                    command.Parameters.AddWithValue("@PasswordHash", model.PasswordHash);
                 }
+
+                var rows = await command.ExecuteNonQueryAsync();
+
+                if (rows == 0) return null;
+
+                model.Id = id;
+                model.PasswordHash = null;
             }
-            return new OkObjectResult(model);
 
-
+            return model;
         }
     }
 }
