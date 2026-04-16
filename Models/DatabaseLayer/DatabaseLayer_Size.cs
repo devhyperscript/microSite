@@ -9,6 +9,7 @@ namespace firstproject.Models.DatabaseLayer
         Task<List<Size>> GetSize();
         Task<IActionResult> AddSize([FromForm] Size size);
         Task<IActionResult> EditSize(int id, [FromForm] Size size);
+        Task<IActionResult> DeleteSize(int id);
 
     }
     public partial interface IDatabaseLayer
@@ -105,5 +106,28 @@ namespace firstproject.Models.DatabaseLayer
 
 
 
-    }
+        public async Task<IActionResult> DeleteSize(int id)
+        {
+            using (var connection = new NpgsqlConnection(this.DbConnection))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(
+                    "DELETE FROM sizes WHERE id = @id",
+                    connection))
+                {
+                    command.Parameters.AddWithValue("@id", id);
+                    int rowsAffected = await command.ExecuteNonQueryAsync();
+                    if (rowsAffected > 0)
+                    {
+                        return new OkObjectResult("Size deleted successfully.");
+                    }
+                    else
+                    {
+                        return new NotFoundObjectResult("Size not found.");
+                    }
+                }
+            }
+        }
+
+        }
 }

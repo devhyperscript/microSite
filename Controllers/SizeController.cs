@@ -40,15 +40,14 @@ namespace firstproject.Controllers
             var result = await _businessLayer.EditSize(id, size);
             return Ok(result);
 
-            //var result = await _businessLayer.EditSize(id, size);
-            //if (result== nu)
-            //{
-            //    return NotFound(new { message = "Size not found." });
-            //}
-            //else
-            //{
-            //    return Ok(new { message = "Size updated successfully." });
-            //}
+        }
+
+        [HttpDelete]
+        [Route("deletesize/{id}")]
+        public async Task<IActionResult> DeleteSize(int id)
+        {
+            var result = await _businessLayer.DeleteSize(id);
+            return Ok(result);
         }
     }
 }
