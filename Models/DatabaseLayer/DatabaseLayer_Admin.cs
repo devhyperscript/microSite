@@ -6,6 +6,8 @@ namespace firstproject.Models.DatabaseLayer
     {
         Task<List<AdminModel>> GetAllAdmins();
         Task<IActionResult> Add([FromForm] AdminModel model);
+
+        Task<IActionResult> Edit([FromForm] AdminModel model);
     }
 
     public partial interface IDatabaseLayer
@@ -55,31 +57,51 @@ namespace firstproject.Models.DatabaseLayer
             using (var connection = new Npgsql.NpgsqlConnection(DbConnection))
             {
                 await connection.OpenAsync();
-
                 var command = new Npgsql.NpgsqlCommand(
-                    @"INSERT INTO ""admin"" 
-            (""FirstName"", ""LastName"", ""Phone"", ""Email"", ""PasswordHash"", ""CreatedAt"") 
-            VALUES 
-            (@FirstName, @LastName, @Phone, @Email, @PasswordHash, @CreatedAt) 
-            RETURNING ""Id""", connection);
-
+                    @"INSERT INTO ""admin"" (""FirstName"", ""LastName"", ""Phone"", ""Email"", ""PasswordHash"", ""CreatedAt"") 
+              VALUES (@FirstName, @LastName, @Phone, @Email, @PasswordHash, @CreatedAt) 
+              RETURNING ""Id""", connection);
                 command.Parameters.AddWithValue("@FirstName", model.FirstName);
                 command.Parameters.AddWithValue("@LastName", model.LastName);
                 command.Parameters.AddWithValue("@Phone", (object)model.Phone ?? DBNull.Value);
                 command.Parameters.AddWithValue("@Email", model.Email);
                 command.Parameters.AddWithValue("@PasswordHash", model.PasswordHash);
                 command.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
-
                 var newId = (int)await command.ExecuteScalarAsync();
                 model.Id = newId;
             }
+            return new OkObjectResult(model);
+        }
 
-            return Ok(new
+
+        public async Task<IActionResult> Edit([FromForm] AdminModel model)
+        {
+            using (var connection = new Npgsql.NpgsqlConnection(DbConnection))
             {
-                status = true,
-                message = "Record successfully added",
-                data = model
-            });
+                await connection.OpenAsync();
+                var command = new Npgsql.NpgsqlCommand(
+                    @"UPDATE ""admin"" 
+              SET ""FirstName"" = @FirstName, 
+                  ""LastName"" = @LastName, 
+                  ""Phone"" = @Phone, 
+                  ""Email"" = @Email, 
+                  ""PasswordHash"" = @PasswordHash
+              WHERE ""Id"" = @Id", connection);
+                command.Parameters.AddWithValue("@Id", model.Id);
+                command.Parameters.AddWithValue("@FirstName", model.FirstName);
+                command.Parameters.AddWithValue("@LastName", model.LastName);
+                command.Parameters.AddWithValue("@Phone", (object)model.Phone ?? DBNull.Value);
+                command.Parameters.AddWithValue("@Email", model.Email);
+                command.Parameters.AddWithValue("@PasswordHash", model.PasswordHash);
+                var rowsAffected = await command.ExecuteNonQueryAsync();
+                if (rowsAffected == 0)
+                {
+                    return new NotFoundResult();
+                }
+            }
+            return new OkObjectResult(model);
+
+
         }
     }
 }
