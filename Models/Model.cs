@@ -33,20 +33,25 @@
         public bool IsActive { get; set; } = true;
     }
 
-    public class  categoryModel
+    public class categoryModel
     {
         public int id { get; set; }
+
         public string Name { get; set; }
 
-        public bool Status {  get; set; }
+        public bool Status { get; set; }
 
-        public string ImageUrl { get; set; }
+        // ✅ DB ke liye (nullable)
+        public string? ImageUrl { get; set; }
 
         public DateTime CreatedAt { get; set; }
-    }
-         
 
-    
+        // ✅ Image upload ke liye (IMPORTANT)
+        public IFormFile? ImageFile { get; set; }
+    }
+
+
+
 
     public class Brand
     {
