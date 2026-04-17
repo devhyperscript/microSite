@@ -44,21 +44,17 @@
 
         public DateTime CreatedAt { get; set; }
     }
-         
 
-    
 
-    public class Brand
+
+
+    public class Brandmodel
     {
         public int Id { get; set; }
         public string? BrandName { get; set; }
-
-        // form-data file
-        public IFormFile? ImageFile { get; set; }
-
-        // DB path
+       
         public string? BrandImage { get; set; }
-
+        public IFormFile? ImageFile { get; set; }
         public bool IsActive { get; set; } = true;
     }
 }

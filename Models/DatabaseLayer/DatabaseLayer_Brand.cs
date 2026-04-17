@@ -5,19 +5,22 @@ namespace firstproject.Models.DatabaseLayer
 {
     public partial interface IDatabaseLayer
     {
-        Task<List<Brand>> GetBrand();
-        Task<IActionResult> AddBrand([FromForm] Brand brand);
-        //Task<IActionResult> EditBrand(int id, [FromForm] Brand brand);
-        //Task<IActionResult> DeleteBrand(int id);
+
+        Task<List<Brandmodel>> GetBrand();
+        //Task<List<Brand>> GetBrands();
+        Task<Brandmodel> Add(Brandmodel model);
     }
-    public partial class DatabaseLayer : IDatabaseLayer
+//descriotion ki jge img  and wwwroot folder ke under uplaod ka ka usme 
+public partial class DatabaseLayer : IDatabaseLayer
     {
-        public async Task<List<Brand>> GetBrand()
+        public async Task<List<Brandmodel>> GetBrand()
         {
-            List<Brand> brands = new List<Brand>();
+            List<Brandmodel> brands = new List<Brandmodel   >();
+
             using (var connection = new NpgsqlConnection(this.DbConnection))
             {
                 await connection.OpenAsync();
+
                 using (var command = new NpgsqlCommand(
                     "SELECT id, brandname, brandimage, isactive FROM brand WHERE isactive = true",
                     connection))
@@ -26,25 +29,25 @@ namespace firstproject.Models.DatabaseLayer
                     {
                         while (await reader.ReadAsync())
                         {
-                            Brand brand = new Brand
+                            Brandmodel brand = new Brandmodel
                             {
                                 Id = reader.GetInt32(reader.GetOrdinal("id")),
                                 BrandName = reader["brandname"]?.ToString(),
                                 BrandImage = reader["brandimage"]?.ToString(),
-
-
                                 IsActive = reader.GetBoolean(reader.GetOrdinal("isactive"))
                             };
+
                             brands.Add(brand);
                         }
                     }
                 }
             }
+
             return brands;
         }
 
-
-        public async Task<IActionResult> AddBrand([FromForm] Brand brand)
+        
+        public async Task<Brandmodel> Add(Brandmodel model)
         {
             using (var connection = new NpgsqlConnection(this.DbConnection))
             {
@@ -53,18 +56,17 @@ namespace firstproject.Models.DatabaseLayer
                     "INSERT INTO brand (brandname, brandimage, isactive) VALUES (@brandname, @brandimage, @isactive) RETURNING id",
                     connection))
                 {
-                    command.Parameters.AddWithValue("@brandname", brand.BrandName);
-                    command.Parameters.AddWithValue("@brandimage", brand.BrandImage);
-                    command.Parameters.AddWithValue("@isactive", brand.IsActive);
-                    int newId = Convert.ToInt32(await command.ExecuteScalarAsync());
-                    brand.Id = newId;
+                    command.Parameters.AddWithValue("@brandname", model.BrandName);
+                    command.Parameters.AddWithValue("@brandimage", model.BrandImage);
+                    command.Parameters.AddWithValue("@isactive", true);
+                    var id = (int)await command.ExecuteScalarAsync();
+                    model.Id = id;
                 }
             }
-            return new OkObjectResult(new { status = true, message = "Brand added successfully", data = brand });
+            return model;
         }
 
-
-
-
     }
+
+
 }
