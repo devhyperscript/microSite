@@ -33,7 +33,7 @@ namespace firstproject.Controllers
         public async Task<IActionResult> Add([FromForm] Brand brand)
         {
             var result = await _businessLayer.AddBrand(brand);
-            return result;
+            return Ok(result);
         }
 
 

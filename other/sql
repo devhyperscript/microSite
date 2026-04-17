@@ -16,6 +16,15 @@ CREATE TABLE sizes (
     is_active BOOLEAN DEFAULT TRUE
 );
 
+CREATE TABLE category (
+    "Id" SERIAL PRIMARY KEY,
+    "Name" VARCHAR(150) NOT NULL,
+    "ImageUrl" TEXT, 
+    "Status" BOOLEAN DEFAULT TRUE, 
+    "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+);
+
 CREATE TABLE brand (
     id SERIAL PRIMARY KEY,
     brandname VARCHAR(100) NOT NULL,

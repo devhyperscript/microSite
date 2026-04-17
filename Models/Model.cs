@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-
-namespace firstproject.Models
+﻿namespace firstproject.Models
 
 
 {
@@ -34,6 +32,21 @@ namespace firstproject.Models
 
         public bool IsActive { get; set; } = true;
     }
+
+    public class  categoryModel
+    {
+        public int id { get; set; }
+        public string Name { get; set; }
+
+        public bool Status {  get; set; }
+
+        public string ImageUrl { get; set; }
+
+        public DateTime CreatedAt { get; set; }
+    }
+         
+
+    
 
     public class Brand
     {
