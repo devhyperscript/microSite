@@ -1,4 +1,6 @@
-﻿namespace firstproject.Models
+﻿using System.Security.Cryptography.X509Certificates;
+
+namespace firstproject.Models
 {
     public class AdminModel
     {
@@ -30,4 +32,19 @@
 
         public bool IsActive { get; set; } = true;
     }
+
+    public class  categoryModel
+    {
+        public int id { get; set; }
+        public string Name { get; set; }
+
+        public bool Status {  get; set; }
+
+        public string ImageUrl { get; set; }
+
+        public DateTime CreatedAt { get; set; }
+    }
+         
+
+    
 }
