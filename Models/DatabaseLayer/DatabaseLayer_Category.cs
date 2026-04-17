@@ -6,6 +6,7 @@ namespace firstproject.Models.DatabaseLayer
     public partial interface IDatabaseLayer
     {
         Task<List<categoryModel>> GetAllCategory();
+        Task<categoryModel> Add(categoryModel model);
     }
 
     public partial class DatabaseLayer : IDatabaseLayer
@@ -45,6 +46,35 @@ namespace firstproject.Models.DatabaseLayer
             }
 
             return categories;
+        }
+
+        public async Task<categoryModel> Add(categoryModel model)
+        {
+            using (var connection = new NpgsqlConnection(DbConnection))
+            {
+                await connection.OpenAsync();
+
+                var command = new NpgsqlCommand(
+                    @"INSERT INTO ""category"" (""Name"", ""ImageUrl"", ""Status"") 
+              VALUES (@Name, @ImageUrl, @Status)
+              RETURNING ""Id"", ""CreatedAt"";",
+                    connection);
+
+                command.Parameters.AddWithValue("@Name", model.Name);
+                command.Parameters.AddWithValue("@ImageUrl", (object?)model.ImageUrl ?? DBNull.Value);
+                command.Parameters.AddWithValue("@Status", model.Status);
+
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        model.id = reader.GetInt32(0);
+                        model.CreatedAt = reader.GetDateTime(1);
+                    }
+                }
+            }
+
+            return model;
         }
     }
 }
