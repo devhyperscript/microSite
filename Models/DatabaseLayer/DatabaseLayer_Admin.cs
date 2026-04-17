@@ -9,11 +9,9 @@ namespace firstproject.Models.DatabaseLayer
         Task<AdminModel> Add(AdminModel model);
         Task<AdminModel> Edit(int id, AdminModel model);
         Task<IActionResult> Delete(int id);
-    }
 
-    public partial interface IDatabaseLayer
-    {
-
+        // ✅ NEW: Login
+        Task<AdminModel> GetAdminByEmail(string email);
     }
 
     public partial class DatabaseLayer : IDatabaseLayer
@@ -22,14 +20,14 @@ namespace firstproject.Models.DatabaseLayer
         {
             var admins = new List<AdminModel>();
 
-            using (var connection = new Npgsql.NpgsqlConnection(DbConnection))
+            using (var connection = new NpgsqlConnection(DbConnection))
             {
                 await connection.OpenAsync();
 
-                var command = new Npgsql.NpgsqlCommand(
+                var command = new NpgsqlCommand(
                     @"SELECT ""Id"", ""FirstName"", ""LastName"", ""Phone"", ""Email"", ""PasswordHash"", ""CreatedAt"" 
-              FROM ""admin"" 
-              ORDER BY ""Id"" DESC", connection);
+                      FROM ""admin"" 
+                      ORDER BY ""Id"" DESC", connection);
 
                 using (var reader = await command.ExecuteReaderAsync())
                 {
@@ -52,7 +50,6 @@ namespace firstproject.Models.DatabaseLayer
             return admins;
         }
 
-
         public async Task<AdminModel> Add(AdminModel model)
         {
             using (var connection = new NpgsqlConnection(DbConnection))
@@ -63,10 +60,10 @@ namespace firstproject.Models.DatabaseLayer
 
                 var command = new NpgsqlCommand(
                     @"INSERT INTO ""admin"" 
-            (""FirstName"", ""LastName"", ""Phone"", ""Email"", ""PasswordHash"", ""CreatedAt"") 
-            VALUES 
-            (@FirstName, @LastName, @Phone, @Email, @PasswordHash, @CreatedAt) 
-            RETURNING ""Id""", connection);
+                      (""FirstName"", ""LastName"", ""Phone"", ""Email"", ""PasswordHash"", ""CreatedAt"") 
+                      VALUES 
+                      (@FirstName, @LastName, @Phone, @Email, @PasswordHash, @CreatedAt) 
+                      RETURNING ""Id""", connection);
 
                 command.Parameters.AddWithValue("@FirstName", model.FirstName);
                 command.Parameters.AddWithValue("@LastName", model.LastName);
@@ -83,7 +80,6 @@ namespace firstproject.Models.DatabaseLayer
             return model;
         }
 
-
         public async Task<AdminModel> Edit(int id, AdminModel model)
         {
             using (var connection = new NpgsqlConnection(DbConnection))
@@ -97,21 +93,21 @@ namespace firstproject.Models.DatabaseLayer
                     model.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.PasswordHash);
 
                     query = @"UPDATE ""admin"" 
-                      SET ""FirstName""=@FirstName,
-                          ""LastName""=@LastName,
-                          ""Phone""=@Phone,
-                          ""Email""=@Email,
-                          ""PasswordHash""=@PasswordHash
-                      WHERE ""Id""=@Id";
+                              SET ""FirstName""=@FirstName,
+                                  ""LastName""=@LastName,
+                                  ""Phone""=@Phone,
+                                  ""Email""=@Email,
+                                  ""PasswordHash""=@PasswordHash
+                              WHERE ""Id""=@Id";
                 }
                 else
                 {
                     query = @"UPDATE ""admin"" 
-                      SET ""FirstName""=@FirstName,
-                          ""LastName""=@LastName,
-                          ""Phone""=@Phone,
-                          ""Email""=@Email
-                      WHERE ""Id""=@Id";
+                              SET ""FirstName""=@FirstName,
+                                  ""LastName""=@LastName,
+                                  ""Phone""=@Phone,
+                                  ""Email""=@Email
+                              WHERE ""Id""=@Id";
                 }
 
                 var command = new NpgsqlCommand(query, connection);
@@ -123,12 +119,9 @@ namespace firstproject.Models.DatabaseLayer
                 command.Parameters.AddWithValue("@Email", model.Email);
 
                 if (!string.IsNullOrEmpty(model.PasswordHash))
-                {
                     command.Parameters.AddWithValue("@PasswordHash", model.PasswordHash);
-                }
 
                 var rows = await command.ExecuteNonQueryAsync();
-
                 if (rows == 0) return null;
 
                 model.Id = id;
@@ -147,20 +140,48 @@ namespace firstproject.Models.DatabaseLayer
                     @"DELETE FROM ""admin"" WHERE ""Id""=@Id", connection);
                 command.Parameters.AddWithValue("@Id", id);
                 var rows = await command.ExecuteNonQueryAsync();
+
                 if (rows == 0)
-                {
-                    return new NotFoundObjectResult(new
-                    {
-                        status = false,
-                        message = "Record not found"
-                    });
-                }
-                return new OkObjectResult(new
-                {
-                    status = true,
-                    message = "Record deleted successfully"
-                });
+                    return new NotFoundObjectResult(new { status = false, message = "Record not found" });
+
+                return new OkObjectResult(new { status = true, message = "Record deleted successfully" });
             }
+        }
+
+        // ✅ NEW: Email se admin fetch karo (login ke liye)
+        public async Task<AdminModel> GetAdminByEmail(string email)
+        {
+            using (var connection = new NpgsqlConnection(DbConnection))
+            {
+                await connection.OpenAsync();
+
+                var command = new NpgsqlCommand(
+                    @"SELECT ""Id"", ""FirstName"", ""LastName"", ""Phone"", ""Email"", ""PasswordHash"", ""CreatedAt"" 
+                      FROM ""admin"" 
+                      WHERE ""Email"" = @Email 
+                      LIMIT 1", connection);
+
+                command.Parameters.AddWithValue("@Email", email);
+
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        return new AdminModel
+                        {
+                            Id = reader.GetInt32(0),
+                            FirstName = reader.GetString(1),
+                            LastName = reader.GetString(2),
+                            Phone = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            Email = reader.GetString(4),
+                            PasswordHash = reader.GetString(5),
+                            CreatedAt = reader.GetDateTime(6)
+                        };
+                    }
+                }
+            }
+
+            return null;
         }
     }
 }
