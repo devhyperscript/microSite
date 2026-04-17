@@ -1,4 +1,8 @@
-﻿namespace firstproject.Models
+﻿using Microsoft.AspNetCore.Http;
+
+namespace firstproject.Models
+
+
 {
     public class AdminModel
     {
@@ -27,6 +31,20 @@
         public string SizeName { get; set; }   // S, M, L, XL, 42, 44
 
         public string Description { get; set; } // Optional
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    public class Brand
+    {
+        public int Id { get; set; }
+        public string? BrandName { get; set; }
+
+        // form-data file
+        public IFormFile? ImageFile { get; set; }
+
+        // DB path
+        public string? BrandImage { get; set; }
 
         public bool IsActive { get; set; } = true;
     }

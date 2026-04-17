@@ -1,10 +1,13 @@
-﻿using firstproject.Models.BusinessLayer;
+﻿using firstproject.Models;
+using firstproject.Models.BusinessLayer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace firstproject.Controllers
 {
 
     [ApiController]
+    [Authorize(Roles = "Admin")]
     [Route("api/admin")]
     public class BrandController : ControllerBase
     {
@@ -23,6 +26,15 @@ namespace firstproject.Controllers
                 return Ok(result);
 
              }
+
+        [HttpPost]
+        [Route("addbrand")]
+
+        public async Task<IActionResult> Add([FromForm] Brand brand)
+        {
+            var result = await _businessLayer.AddBrand(brand);
+            return result;
+        }
 
 
 

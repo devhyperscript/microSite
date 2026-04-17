@@ -43,6 +43,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<IDatabaseLayer, DatabaseLayer>();
 builder.Services.AddScoped<IBusinessLayer, BusinessLayer>();
