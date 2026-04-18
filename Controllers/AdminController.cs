@@ -115,8 +115,6 @@ namespace firstproject.Controllers
                     phone = result.Phone,
                     email = result.Email,
                     createdAt = result.CreatedAt
-                    // PasswordHash ❌ nahi
-                    // Token ❌ nahi
                 }
             });
         }

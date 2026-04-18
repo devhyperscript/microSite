@@ -11,7 +11,6 @@ namespace firstproject.Models.BusinessLayer
         Task<AdminModel> Edit(int id, AdminModel model);
         Task<IActionResult> Delete(int id);
 
-        // ✅ NEW: Login
         Task<AdminModel> GetAdminByEmail(string email);
     }
 

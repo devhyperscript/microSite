@@ -2,11 +2,12 @@
 using firstproject.Models.BusinessLayer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Concurrent;
 
 namespace firstproject.Controllers
 {
     [ApiController]
-    
+
     [Route("api/category")]
     public class CategoryController : ControllerBase
     {
@@ -66,9 +67,54 @@ namespace firstproject.Controllers
             {
                 status = true,
                 message = "Record successfully added",
-                data = result
+                //data = result
             });
         }
+
+        [HttpPut("edit/{id}")]
+        [Authorize]
+        public async Task<IActionResult> Edit(int id, [FromForm] categoryModel model)
+        {
+            if (model.ImageFile != null)
+            {
+                var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+                if (!Directory.Exists(uploadPath))
+                    Directory.CreateDirectory(uploadPath);
+                var fileName = Guid.NewGuid().ToString() + Path.GetFileName(model.ImageFile.FileName);
+                var path = Path.Combine(uploadPath, fileName);
+                using (var stream = new FileStream($"{path}", FileMode.Create))
+                {
+                    await model.ImageFile.CopyToAsync(stream);
+                }
+                model.ImageUrl = "/uploads/" + fileName;
+            }
+            var result = await _businessLayer.Edit(id, model);
+            return Ok(new
+            {
+                status = true,
+                message = "Record successfully edit",
+            });
+        }
+
+
+        [HttpDelete("delete/{id}")]
+        public async Task<IActionResult> DeleteCategory(int id)
+        {
+            var result = await _businessLayer.DeleteCategory(id);
+
+            if (result == null)
+                return NotFound(new { status = false, message = "Record not found" });
+
+            return Ok(new
+            {
+                status = true,
+                message = "Record deleted successfully"
+            });
+        }
+
+
+
     }
+
 
 }

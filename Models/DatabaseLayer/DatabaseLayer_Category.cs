@@ -1,4 +1,7 @@
 ﻿using firstproject.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace firstproject.Models.DatabaseLayer
@@ -7,6 +10,11 @@ namespace firstproject.Models.DatabaseLayer
     {
         Task<List<categoryModel>> GetAllCategory();
         Task<categoryModel> Add(categoryModel model);
+        Task<categoryModel> Edit(int id, categoryModel model);
+
+        Task<bool> DeleteCategory(int id);
+
+
     }
 
     public partial class DatabaseLayer : IDatabaseLayer
@@ -76,5 +84,56 @@ namespace firstproject.Models.DatabaseLayer
 
             return model;
         }
+
+        public async Task<categoryModel> Edit(int id, categoryModel model)
+        {
+            using (var connection = new NpgsqlConnection(DbConnection))
+            {
+                await connection.OpenAsync();
+
+                var command = new NpgsqlCommand(
+    @"UPDATE ""category"" 
+      SET ""Name"" = @Name,
+          ""ImageUrl"" = COALESCE(@ImageUrl, ""ImageUrl""),
+          ""Status"" = @Status
+      WHERE ""Id"" = @Id
+      RETURNING ""Id"", ""Name"", ""ImageUrl"", ""Status"";",
+    connection);
+
+                command.Parameters.AddWithValue("@Id", id);
+                command.Parameters.AddWithValue("@Name", model.Name ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@Status", model.Status);
+                command.Parameters.AddWithValue("@ImageUrl",
+                    string.IsNullOrEmpty(model.ImageUrl) ? (object)DBNull.Value : model.ImageUrl);
+
+                await command.ExecuteNonQueryAsync();
+
+                return model;
+            }
+        }
+
+        public async Task<bool> DeleteCategory(int id)
+        {
+            using (var connection = new NpgsqlConnection(DbConnection))
+            {
+                await connection.OpenAsync();
+
+                var command = new NpgsqlCommand(
+                    @"DELETE FROM ""category"" 
+              WHERE ""Id"" = @Id",
+                    connection);
+
+                command.Parameters.AddWithValue("@Id", id);
+
+                var rows = await command.ExecuteNonQueryAsync();
+
+                return rows > 0; // true = deleted
+            }
+        }
+
+
+
+
+
     }
 }
