@@ -39,3 +39,15 @@ CREATE TABLE color (
     colorcode VARCHAR(20),
     isactive BOOLEAN DEFAULT TRUE
 );
+
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    firstname VARCHAR(100) NOT NULL,
+    lastname VARCHAR(100),
+    email VARCHAR(150) UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role VARCHAR(50) DEFAULT 'USER',
+    isactive BOOLEAN DEFAULT TRUE,
+    createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
