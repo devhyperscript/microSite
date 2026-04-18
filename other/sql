@@ -23,11 +23,19 @@ CREATE TABLE category (
     "Status" BOOLEAN DEFAULT TRUE, 
     "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-);
+
 
 CREATE TABLE brand (
     id SERIAL PRIMARY KEY,
     brandname VARCHAR(100) NOT NULL,
     brandimage TEXT,
+    isactive BOOLEAN DEFAULT TRUE
+);
+
+
+CREATE TABLE color (
+    id SERIAL PRIMARY KEY,
+    colorname VARCHAR(100) NOT NULL,
+    colorcode VARCHAR(20),
     isactive BOOLEAN DEFAULT TRUE
 );
