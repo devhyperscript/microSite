@@ -62,4 +62,12 @@
         public IFormFile? ImageFile { get; set; }
         public bool IsActive { get; set; } = true;
     }
+
+    public class Colormodel
+    {
+        public int Id { get; set; }
+        public string? Colorname { get; set; }
+        public string? Colorcode { get; set; }
+        public bool Isactive { get; set; } = true;
+    }
 }

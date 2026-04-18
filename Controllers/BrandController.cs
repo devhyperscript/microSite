@@ -24,11 +24,10 @@ namespace firstproject.Controllers
             return Ok(result);
         }
 
-        //[HttpPost]
-        //[Route("addbrand")]
+
 
         [HttpPost("addbrand")]
-   
+
         public async Task<IActionResult> Add([FromForm] Brandmodel model)
         {
             if (model.ImageFile == null)
@@ -55,6 +54,43 @@ namespace firstproject.Controllers
         }
 
 
+        [HttpPut("editbrand/{id}")]
+        public async Task<IActionResult> Edit(int id, [FromForm] Brandmodel model)
+        {
+            if (model.ImageFile != null)
+            {
+                var folder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+                if (!Directory.Exists(folder))
+                    Directory.CreateDirectory(folder);
+                var fileName = Guid.NewGuid() + Path.GetExtension(model.ImageFile.FileName);
+                var path = Path.Combine(folder, fileName);
+                using (var stream = new FileStream(path, FileMode.Create))
+                {
+                    await model.ImageFile.CopyToAsync(stream);
+                }
+                model.BrandImage = "/uploads/" + fileName;
+            }
+            var result = await _businessLayer.Edit(id, model);
+            return Ok(result);
+
+
+        }
+
+        [HttpDelete("deletebrand/{id}")]
+
+        public async Task<IActionResult> Delete(int id)
+        {
+            var result = await _businessLayer.DeleteBrand(id);
+            return Ok(new
+            {
+
+                status = true,
+                message = "Brand deleted successfully",
+
+            }
+
+               );
+        }
     }
 }
 
