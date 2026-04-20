@@ -11,10 +11,8 @@ namespace firstproject.Models.DatabaseLayer
         Task<List<categoryModel>> GetAllCategory();
         Task<categoryModel> Add(categoryModel model);
         Task<categoryModel> Edit(int id, categoryModel model);
-
         Task<bool> DeleteCategory(int id);
-
-
+        Task<categoryModel?> GetCategoryById(int id);
     }
 
     public partial class DatabaseLayer : IDatabaseLayer
@@ -64,8 +62,8 @@ namespace firstproject.Models.DatabaseLayer
 
                 var command = new NpgsqlCommand(
                     @"INSERT INTO ""category"" (""Name"", ""ImageUrl"", ""Status"") 
-              VALUES (@Name, @ImageUrl, @Status)
-              RETURNING ""Id"", ""CreatedAt"";",
+                      VALUES (@Name, @ImageUrl, @Status)
+                      RETURNING ""Id"", ""CreatedAt"";",
                     connection);
 
                 command.Parameters.AddWithValue("@Name", model.Name);
@@ -92,13 +90,13 @@ namespace firstproject.Models.DatabaseLayer
                 await connection.OpenAsync();
 
                 var command = new NpgsqlCommand(
-    @"UPDATE ""category"" 
-      SET ""Name"" = @Name,
-          ""ImageUrl"" = COALESCE(@ImageUrl, ""ImageUrl""),
-          ""Status"" = @Status
-      WHERE ""Id"" = @Id
-      RETURNING ""Id"", ""Name"", ""ImageUrl"", ""Status"";",
-    connection);
+                    @"UPDATE ""category"" 
+                      SET ""Name"" = @Name,
+                          ""ImageUrl"" = COALESCE(@ImageUrl, ""ImageUrl""),
+                          ""Status"" = @Status
+                      WHERE ""Id"" = @Id
+                      RETURNING ""Id"", ""Name"", ""ImageUrl"", ""Status"";",
+                    connection);
 
                 command.Parameters.AddWithValue("@Id", id);
                 command.Parameters.AddWithValue("@Name", model.Name ?? (object)DBNull.Value);
@@ -120,20 +118,45 @@ namespace firstproject.Models.DatabaseLayer
 
                 var command = new NpgsqlCommand(
                     @"DELETE FROM ""category"" 
-              WHERE ""Id"" = @Id",
+                      WHERE ""Id"" = @Id",
                     connection);
 
                 command.Parameters.AddWithValue("@Id", id);
 
                 var rows = await command.ExecuteNonQueryAsync();
 
-                return rows > 0; // true = deleted
+                return rows > 0;
             }
         }
 
+        public async Task<categoryModel?> GetCategoryById(int id)
+        {
+            using (var connection = new NpgsqlConnection(DbConnection))
+            {
+                await connection.OpenAsync();
 
+                var command = new NpgsqlCommand(
+                    @"SELECT ""Id"", ""ImageUrl"" FROM ""category"" WHERE ""Id"" = @Id",
+                    connection);
 
+                command.Parameters.AddWithValue("@Id", id);
 
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync())
+                    {
+                        return new categoryModel
+                        {
+                            id = reader.GetInt32(reader.GetOrdinal("Id")),
+                            ImageUrl = reader.IsDBNull(reader.GetOrdinal("ImageUrl"))
+                                        ? null
+                                        : reader.GetString(reader.GetOrdinal("ImageUrl"))
+                        };
+                    }
+                }
 
+                return null;
+            }
+        }
     }
 }
