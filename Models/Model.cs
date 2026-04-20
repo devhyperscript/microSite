@@ -95,6 +95,13 @@
         public string? Password { get; set; }
         public string? Role { get; set; }
         public bool Isactive { get; set; } = true;
+        public string? Token { get; set; }
         public DateTime Createdat { get; set; }
+    }
+
+    public class UserLoginModel
+    {
+        public string? Email { get; set; }
+        public string? Password { get; set; }
     }
 }
