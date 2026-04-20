@@ -144,5 +144,7 @@ namespace firstproject.Controllers
                 message = "Record deleted successfully"
             });
         }
+
+
     }
 }
