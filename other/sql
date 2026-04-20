@@ -24,6 +24,20 @@ CREATE TABLE category (
     "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE subCategory (
+    "Id" SERIAL PRIMARY KEY,
+    "CategoryId" INT NOT NULL,
+    "subCategoryName" VARCHAR(150) NOT NULL,
+    "subCategoryImageUrl" TEXT,
+    "Status" BOOLEAN DEFAULT TRUE,
+    "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_category
+    FOREIGN KEY ("CategoryId") 
+    REFERENCES "category"("Id") 
+    ON DELETE CASCADE
+);
+
 
 CREATE TABLE brand (
     id SERIAL PRIMARY KEY,
