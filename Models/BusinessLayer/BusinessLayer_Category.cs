@@ -7,9 +7,9 @@ namespace firstproject.Models.BusinessLayer
     {
         Task<List<categoryModel>> GetAllCategory();
         Task<categoryModel> Add(categoryModel model);
-        Task<categoryModel> Edit(int id ,categoryModel model);
-
+        Task<categoryModel> Edit(int id, categoryModel model);
         Task<bool> DeleteCategory(int id);
+        Task<categoryModel?> GetCategoryById(int id);
     }
 
     public partial class BusinessLayer : IBusinessLayer
@@ -34,7 +34,9 @@ namespace firstproject.Models.BusinessLayer
             return await _databaseLayer.DeleteCategory(id);
         }
 
-
-
+        public async Task<categoryModel?> GetCategoryById(int id)
+        {
+            return await _databaseLayer.GetCategoryById(id);
+        }
     }
 }
