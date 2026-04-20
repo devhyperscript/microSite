@@ -60,6 +60,9 @@
 
         public int CategoryId { get; set; }
 
+        public string? CategoryName { get; set; }
+        public DateTime CreatedAt { get; set; }
+
         public bool Status { get; set; } = true;
 
         public IFormFile? ImageFile { get; set; }
