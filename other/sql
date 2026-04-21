@@ -38,6 +38,29 @@ CREATE TABLE subCategory (
     ON DELETE CASCADE
 );
 
+CREATE TABLE childCategory (
+    "Id" SERIAL PRIMARY KEY,
+
+    "CategoryId" INT NOT NULL,
+    "SubCategoryId" INT NOT NULL,
+
+    "ChildCategoryName" VARCHAR(150) NOT NULL,
+    "ChildCategoryImageUrl" TEXT,
+
+    "Status" BOOLEAN DEFAULT TRUE,
+    "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_child_category_category
+        FOREIGN KEY ("CategoryId")
+        REFERENCES "category"("Id")
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_child_category_subcategory
+        FOREIGN KEY ("SubCategoryId")
+        REFERENCES "subcategory"("Id")
+        ON DELETE CASCADE
+);
+
 
 CREATE TABLE brand (
     id SERIAL PRIMARY KEY,

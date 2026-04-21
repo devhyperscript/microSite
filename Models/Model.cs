@@ -71,6 +71,20 @@ namespace firstproject.Models
         public IFormFile? ImageFile { get; set; }
     }
 
+    public class childCategoryModel
+    {
+        public int Id { get; set; }
+        public string? ChildCategoryName { get; set; }
+        public string? ChildCategoryImageUrl { get; set; }
+        public int SubCategoryId { get; set; }
+        public string? SubCategoryName { get; set; }
+        public int CategoryId { get; set; }
+        public string? CategoryName { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public bool Status { get; set; } = true;
+        public IFormFile? ImageFile { get; set; }
+    }
+
 
 
     public class Brandmodel
