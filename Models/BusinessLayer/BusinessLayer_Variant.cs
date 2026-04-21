@@ -8,7 +8,10 @@ namespace firstproject.Models.BusinessLayer
 
 
         Task<IActionResult> AddVariant([FromForm] Variantmodel variant);
-    }   
+        Task<IActionResult> UpdateVariant(int id, [FromForm] Variantmodel variant);
+        Task<Variantmodel> GetVariantById(int id);
+        Task<IActionResult> DeleteVariant(int id);
+    }
 
     public partial class BusinessLayer : IBusinessLayer
     {
@@ -18,9 +21,28 @@ namespace firstproject.Models.BusinessLayer
             return result;
         }
 
+
+
         public async Task<IActionResult> AddVariant([FromForm] Variantmodel variant)
         {
             var result = await _databaseLayer.AddVariant(variant);
+            return result;
+        }
+
+        public async Task<IActionResult> UpdateVariant(int id, [FromForm] Variantmodel variant)
+        {
+            var result = await _databaseLayer.UpdateVariant(id, variant);
+            return result;
+        }
+        public async Task<Variantmodel> GetVariantById(int id)
+        {
+            var result = await _databaseLayer.GetVariantById(id);
+            return result;
+        }
+
+        public async Task<IActionResult> DeleteVariant(int id)
+        {
+            var result = await _databaseLayer.DeleteVariant(id);
             return result;
         }
     }

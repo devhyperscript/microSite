@@ -8,6 +8,9 @@ namespace firstproject.Models.DatabaseLayer
     {
         Task<List<Variantmodel>> GetVariant();
         Task<IActionResult> AddVariant([FromForm] Variantmodel variant);
+        Task<IActionResult> UpdateVariant(int id, [FromForm] Variantmodel variant);
+        Task<Variantmodel> GetVariantById(int id);
+        Task<IActionResult> DeleteVariant(int id);
     }
 
     public partial class DatabaseLayer : IDatabaseLayer
@@ -109,7 +112,7 @@ namespace firstproject.Models.DatabaseLayer
                 command.Parameters.AddWithValue("@productid", variant.ProductId);
                 command.Parameters.AddWithValue("@variantname", (object)variant.VariantName ?? DBNull.Value);
                 command.Parameters.Add(new NpgsqlParameter("@sizeid",
-     NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Integer)
+                   NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Integer)
                 {
                     Value = variant.SizeId ?? Array.Empty<int>()
                 });
@@ -124,7 +127,7 @@ namespace firstproject.Models.DatabaseLayer
                 command.Parameters.AddWithValue("@stock", variant.Stock);
                 command.Parameters.AddWithValue("@sku", (object)variant.Sku ?? DBNull.Value);
                 command.Parameters.AddWithValue("@image", (object)variant.Image ?? DBNull.Value);
-              
+
                 command.Parameters.Add(new NpgsqlParameter("@imagegallery", NpgsqlDbType.Array | NpgsqlDbType.Text)
                 {
                     Value = (object?)variant.ImageGallery ?? DBNull.Value
@@ -138,6 +141,106 @@ namespace firstproject.Models.DatabaseLayer
             }
 
 
+        }
+
+
+
+        public async Task<IActionResult> UpdateVariant(int id, [FromForm] Variantmodel variant)
+        {
+            using (var connection = new NpgsqlConnection(DbConnection))
+            {
+                await connection.OpenAsync();
+                var command = new NpgsqlCommand("UPDATE variant SET productid=@productid, variantname=@variantname, sizeid=@sizeid, colorid=@colorid, price=@price, stock=@stock, sku=@sku, image=@image,imagegallery=@imagegallery ,isactive=@isactive  WHERE id = @id", connection);
+                command.Parameters.AddWithValue("@id", id);
+                command.Parameters.AddWithValue("@productid", variant.ProductId);
+                command.Parameters.AddWithValue("@variantname", (object)variant.VariantName ?? DBNull.Value);
+                command.Parameters.Add(new NpgsqlParameter("@sizeid",
+                   NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Integer)
+                {
+                    Value = variant.SizeId ?? Array.Empty<int>()
+                });
+                command.Parameters.Add(new NpgsqlParameter("@colorid",
+                    NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Integer)
+                {
+                    Value = variant.ColorId ?? Array.Empty<int>()
+                });
+                command.Parameters.AddWithValue("@price", variant.Price);
+                command.Parameters.AddWithValue("@stock", variant.Stock);
+                command.Parameters.AddWithValue("@sku", (object)variant.Sku ?? DBNull.Value);
+                command.Parameters.AddWithValue("@image", (object)variant.Image ?? DBNull.Value);
+                command.Parameters.Add(new NpgsqlParameter("@imagegallery", NpgsqlDbType.Array | NpgsqlDbType.Text)
+                {
+                    Value = (object?)variant.ImageGallery ?? DBNull.Value
+                });
+                command.Parameters.AddWithValue("@isactive", variant.IsActive);
+                var result = await command.ExecuteNonQueryAsync();
+                if (result > 0)
+                    return new JsonResult(new { status = true, message = "Variant updated successfully" });
+                else
+                    return new JsonResult(new { status = false, message = "Failed to update variant" });
+            }
+        }
+
+
+        public async Task<Variantmodel> GetVariantById(int id)
+        {
+            using (var connection = new NpgsqlConnection(DbConnection))
+            {
+                await connection.OpenAsync();
+                var command = new NpgsqlCommand("SELECT * FROM variant WHERE id = @id", connection);
+                command.Parameters.AddWithValue("@id", id);
+                var reader = await command.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    return new Variantmodel
+                    {
+                        Id = reader.GetInt32(reader.GetOrdinal("id")),
+                        VariantName = reader.IsDBNull(reader.GetOrdinal("variantname"))
+                            ? null
+                            : reader.GetString(reader.GetOrdinal("variantname")),
+                        ProductId = reader.GetInt32(reader.GetOrdinal("productid")),
+                        SizeId = reader.IsDBNull(reader.GetOrdinal("sizeid"))
+                            ? null
+                            : reader.GetFieldValue<int[]>(reader.GetOrdinal("sizeid")),
+                        ColorId = reader.IsDBNull(reader.GetOrdinal("colorid"))
+                            ? null
+                            : reader.GetFieldValue<int[]>(reader.GetOrdinal("colorid")),
+                        Price = reader.GetDecimal(reader.GetOrdinal("price")),
+                        Stock = reader.GetInt32(reader.GetOrdinal("stock")),
+                        Sku = reader.IsDBNull(reader.GetOrdinal("sku"))
+                            ? null
+                            : reader.GetString(reader.GetOrdinal("sku")),
+                        Image = reader.IsDBNull(reader.GetOrdinal("image"))
+                            ? null
+                            : reader.GetString(reader.GetOrdinal("image")),
+                        ImageGallery = reader.IsDBNull(reader.GetOrdinal("imagegallery"))
+                            ? null
+                            : reader.GetFieldValue<string[]>(reader.GetOrdinal("imagegallery")),
+                        IsActive = reader.GetBoolean(reader.GetOrdinal("isactive")),
+                        CreatedAt = reader.GetDateTime(reader.GetOrdinal("createdat"))
+                    };
+                }
+                else
+                {
+                    return null;
+                }
+            }
+
+        }
+
+        public async Task<IActionResult> DeleteVariant(int id)
+        {
+            using (var connection = new NpgsqlConnection(DbConnection))
+            {
+                await connection.OpenAsync();
+                var command = new NpgsqlCommand("DELETE FROM variant WHERE id = @id", connection);
+                command.Parameters.AddWithValue("@id", id);
+                var result = await command.ExecuteNonQueryAsync();
+                if (result > 0)
+                    return new JsonResult(new { status = true, message = "Variant deleted successfully" });
+                else
+                    return new JsonResult(new { status = false, message = "Failed to delete variant" });
+            }
         }
     }
 
