@@ -32,23 +32,50 @@ namespace firstproject.Models.DatabaseLayer
                 await connection.OpenAsync();
 
                 using (var command = new NpgsqlCommand(@"
-        SELECT 
-            id,
-            productname,
-            description,
-            price,
-            stock,
-            categoryid,
-            subcategoryid,
-            childcategoryid,
-            brandid,
-            sizeids,
-            colorids,
-            image,
-            imagegallery,
-            isactive,
-            createdat
-        FROM product", connection))
+            SELECT 
+                p.id,
+                p.productname,
+p.slug,
+                p.description,
+                p.price,
+                p.stock,
+                p.categoryid,
+                p.subcategoryid,
+                p.childcategoryid,
+                p.brandid,
+                p.sizeids,
+                p.colorids,
+                p.image,
+                p.imagegallery,
+                p.isactive,
+                p.createdat,
+
+                -- ✅ Names
+                c.""Name""          AS categoryname,
+                sc.""SubCategoryName"" AS subcategoryname,
+                cc.""ChildCategoryName"" AS childcategoryname,
+                b.brandname         AS brandname,
+
+                -- ✅ Size names array
+                ARRAY(
+                    SELECT s.size_name 
+                    FROM sizes s 
+                    WHERE s.id = ANY(p.sizeids)
+                ) AS sizenames,
+
+                -- ✅ Color names array
+                ARRAY(
+                    SELECT col.colorname 
+                    FROM color col 
+                    WHERE col.id = ANY(p.colorids)
+                ) AS colornames
+
+            FROM product p
+            LEFT JOIN category c         ON p.categoryid = c.""Id""
+            LEFT JOIN subcategory sc      ON p.subcategoryid = sc.""Id""
+            LEFT JOIN childcategory cc    ON p.childcategoryid = cc.""Id""
+            LEFT JOIN brand b             ON p.brandid = b.id
+        ", connection))
                 {
                     using (var reader = await command.ExecuteReaderAsync())
                     {
@@ -58,36 +85,48 @@ namespace firstproject.Models.DatabaseLayer
                             {
                                 Id = reader.GetInt32(reader.GetOrdinal("id")),
                                 ProductName = reader["productname"]?.ToString(),
-                                Description = reader["description"]?.ToString(),
+                                Slug = reader.IsDBNull(reader.GetOrdinal("slug"))
+                                                ? null : reader["slug"].ToString(),
+                                Description = reader.IsDBNull(reader.GetOrdinal("description"))
+                                                ? null : reader["description"].ToString(),
                                 Price = reader.GetDecimal(reader.GetOrdinal("price")),
                                 Stock = reader.GetInt32(reader.GetOrdinal("stock")),
-
                                 CategoryId = reader.GetInt32(reader.GetOrdinal("categoryid")),
                                 SubCategoryId = reader.GetInt32(reader.GetOrdinal("subcategoryid")),
-                                ChildCategoryId = reader.GetInt32(reader.GetOrdinal("childcategoryid")),
-
+                                ChildCategoryId = reader.IsDBNull(reader.GetOrdinal("childcategoryid"))
+                                                ? null : reader.GetInt32(reader.GetOrdinal("childcategoryid")),
                                 BrandId = reader.IsDBNull(reader.GetOrdinal("brandid"))
-                                            ? null
-                                            : reader.GetInt32(reader.GetOrdinal("brandid")),
-
+                                                ? null : reader.GetInt32(reader.GetOrdinal("brandid")),
                                 SizeIds = reader.IsDBNull(reader.GetOrdinal("sizeids"))
-                                            ? null
-                                            : (int[])reader["sizeids"],
-
+                                                ? null : (int[])reader["sizeids"],
                                 ColorIds = reader.IsDBNull(reader.GetOrdinal("colorids"))
-                                            ? null
-                                            : (int[])reader["colorids"],
-
+                                                ? null : (int[])reader["colorids"],
                                 Image = reader.IsDBNull(reader.GetOrdinal("image"))
-                                            ? null
-                                            : reader["image"].ToString(),
-
+                                                ? null : reader["image"].ToString(),
                                 ImageGallery = reader.IsDBNull(reader.GetOrdinal("imagegallery"))
-                                            ? null
-                                            : (string[])reader["imagegallery"],
-
+                                                ? null : (string[])reader["imagegallery"],
                                 IsActive = reader.GetBoolean(reader.GetOrdinal("isactive")),
-                                CreatedAt = reader.GetDateTime(reader.GetOrdinal("createdat"))
+                                CreatedAt = reader.GetDateTime(reader.GetOrdinal("createdat")),
+
+                                // ✅ Names
+                                CategoryName = reader.IsDBNull(reader.GetOrdinal("categoryname"))
+                                                ? null : reader["categoryname"].ToString(),
+                                SubCategoryName = reader.IsDBNull(reader.GetOrdinal("subcategoryname"))
+                                                ? null : reader["subcategoryname"].ToString(),
+                                ChildCategoryName = reader.IsDBNull(reader.GetOrdinal("childcategoryname"))
+                                                ? null : reader["childcategoryname"].ToString(),
+                                BrandName = reader.IsDBNull(reader.GetOrdinal("brandname"))
+                                                ? null : reader["brandname"].ToString(),
+
+                                // ✅ Size names
+                                SizeNames = reader.IsDBNull(reader.GetOrdinal("sizenames"))
+                                                ? null
+                                                : ((string[])reader["sizenames"]).ToList(),
+
+                                // ✅ Color names
+                                ColorNames = reader.IsDBNull(reader.GetOrdinal("colornames"))
+                                                ? null
+                                                : ((string[])reader["colornames"]).ToList(),
                             };
 
                             products.Add(product);
@@ -108,11 +147,12 @@ namespace firstproject.Models.DatabaseLayer
                 await connection.OpenAsync();
                 using (var command = new NpgsqlCommand(@"
                     INSERT INTO product 
-                    (productname, description, price, stock, categoryid, subcategoryid, childcategoryid, brandid, sizeids, colorids, image, imagegallery, isactive, createdat) 
+                    (productname, slug, description, price, stock, categoryid, subcategoryid, childcategoryid, brandid, sizeids, colorids, image, imagegallery, isactive, createdat) 
                     VALUES 
-                    (@productname, @description, @price, @stock, @categoryid, @subcategoryid, @childcategoryid, @brandid, @sizeids, @colorids, @image, @imagegallery, @isactive, @createdat)", connection))
+                    (@productname,@slug, @description, @price, @stock, @categoryid, @subcategoryid, @childcategoryid, @brandid, @sizeids, @colorids, @image, @imagegallery, @isactive, @createdat)", connection))
                 {
                     command.Parameters.AddWithValue("@productname", product.ProductName);
+                    command.Parameters.AddWithValue("@slug", product.Slug ?? Guid.NewGuid().ToString()); // Generate slug if not provided
                     command.Parameters.AddWithValue("@description", (object)product.Description ?? DBNull.Value);
                     command.Parameters.AddWithValue("@price", product.Price);
                     command.Parameters.AddWithValue("@stock", product.Stock);
@@ -156,6 +196,7 @@ namespace firstproject.Models.DatabaseLayer
                 using (var command = new NpgsqlCommand(@"
             UPDATE product SET 
             productname = @productname, 
+slug = @slug,
             description = @description, 
             price = @price, 
             stock = @stock, 
@@ -172,6 +213,7 @@ namespace firstproject.Models.DatabaseLayer
                 {
                     command.Parameters.AddWithValue("@id", id);
                     command.Parameters.AddWithValue("@productname", product.ProductName);
+                    command.Parameters.AddWithValue("@slug", product.Slug ?? Guid.NewGuid().ToString()); // Generate slug if not provided
                     command.Parameters.AddWithValue("@description", (object?)product.Description ?? DBNull.Value);
                     command.Parameters.AddWithValue("@price", product.Price);
                     command.Parameters.AddWithValue("@stock", product.Stock);
@@ -218,7 +260,7 @@ namespace firstproject.Models.DatabaseLayer
                 await connection.OpenAsync();
 
                 using (var command = new NpgsqlCommand(@"
-            SELECT id, productname, description, price, stock,
+            SELECT id, productname, slug, description, price, stock,
                    categoryid, subcategoryid, childcategoryid,
                    brandid, sizeids, colorids,
                    image, imagegallery, isactive, createdat
@@ -234,6 +276,8 @@ namespace firstproject.Models.DatabaseLayer
                             {
                                 Id = reader.GetInt32(reader.GetOrdinal("id")),
                                 ProductName = reader["productname"]?.ToString(),
+                                Slug = reader.IsDBNull(reader.GetOrdinal("slug"))
+                                                ? null : reader["slug"].ToString(),
                                 Description = reader.IsDBNull(reader.GetOrdinal("description"))
                                                 ? null : reader["description"].ToString(),
                                 Price = reader.GetDecimal(reader.GetOrdinal("price")),

@@ -144,33 +144,34 @@ namespace firstproject.Models
         public DateTime CreatedAt { get; set; }
     }
 
-
     public class Productmodel
     {
         public int Id { get; set; }
         public string ProductName { get; set; } = string.Empty;
+        public string? Slug { get; set; }
         public string? Description { get; set; }
         public decimal Price { get; set; }
         public int Stock { get; set; }
-
-        
-
         public int CategoryId { get; set; }
         public int SubCategoryId { get; set; }
         public int? ChildCategoryId { get; set; }
         public int? BrandId { get; set; }
-
         public int[]? SizeIds { get; set; }
         public int[]? ColorIds { get; set; }
         public IFormFile? ImageFile { get; set; }
         public IFormFile[]? GalleryFiles { get; set; }
-
-        // 👇 paths for DB
         public string? Image { get; set; }
         public string[]? ImageGallery { get; set; }
-
-
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
+
+        // ✅ Name fields add karo
+        public string? CategoryName { get; set; }
+        public string? SubCategoryName { get; set; }
+        public string? ChildCategoryName { get; set; }
+        public string? BrandName { get; set; }
+        public List<string>? SizeNames { get; set; }
+        public List<string>? ColorNames { get; set; }
     }
+
 }
