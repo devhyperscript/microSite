@@ -143,3 +143,42 @@ CREATE TABLE product (
         ON DELETE SET NULL
     
 );
+
+
+CREATE TABLE variant (
+    id SERIAL PRIMARY KEY,
+    variantname VARCHAR(200) NOT NULL,
+
+    productid INT NOT NULL,
+    sizeid INT[],
+    colorid INT[],
+
+    price DECIMAL(10,2) NOT NULL,
+    stock INT DEFAULT 0,
+
+    sku VARCHAR(100),
+
+
+    image TEXT,          -- main image
+    imagegallery TEXT[], -- gallery images
+
+    isactive BOOLEAN DEFAULT TRUE,
+    createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_variant_product
+        FOREIGN KEY (productid)
+        REFERENCES product(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_variant_size
+        FOREIGN KEY (sizeid)
+        REFERENCES sizes(id),
+
+    CONSTRAINT fk_variant_color
+        FOREIGN KEY (colorid)
+        REFERENCES color(id),
+
+    CONSTRAINT unique_variant UNIQUE (productid, sizeid, colorid)
+);
+
+

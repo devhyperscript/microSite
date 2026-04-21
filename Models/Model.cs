@@ -174,4 +174,39 @@ namespace firstproject.Models
         public List<string>? ColorNames { get; set; }
     }
 
+
+
+
+    public class Variantmodel
+    {
+        public int Id { get; set; }
+        public string? VariantName { get; set; }
+
+        public int ProductId { get; set; }
+        public int[]? SizeId { get; set; }
+        public int[]? ColorId { get; set; }
+
+        public decimal Price { get; set; }
+        public int Stock { get; set; }
+
+        public string? Sku { get; set; }
+
+        // Images
+        public IFormFile? ImageFile { get; set; }
+        public IFormFile[]? GalleryFiles { get; set; }
+
+        public string? Image { get; set; }
+        public string[]? ImageGallery { get; set; }
+
+        public bool IsActive { get; set; }
+        public DateTime CreatedAt { get; set; }
+
+        // For joins (optional)
+        public string[]? SizeNames { get; set; }
+        public string[]? ColorNames { get; set; }
+    }
+
+
+
+
 }
