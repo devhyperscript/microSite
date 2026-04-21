@@ -7,6 +7,8 @@ namespace firstproject.Models.BusinessLayer
         Task<List<Contactmodel>> GetContact();
 
         Task<IActionResult> AddContact([FromForm] Contactmodel model);
+        Task<IActionResult> UpdateContact(int id, [FromForm] Contactmodel model);
+        Task<IActionResult> DeleteContact(int id);
     }
 
     public partial class BusinessLayer : IBusinessLayer
@@ -20,6 +22,18 @@ namespace firstproject.Models.BusinessLayer
        public async Task<IActionResult> AddContact([FromForm] Contactmodel model)
         {
             var result = await _databaseLayer.AddContact(model);
+            return result;
+        }
+        
+        public async Task<IActionResult> UpdateContact(int id, [FromForm] Contactmodel model)
+        {
+            var result = await _databaseLayer.UpdateContact(id, model);
+            return result;
+        }
+
+        public async Task<IActionResult> DeleteContact(int id)
+        {
+            var result = await _databaseLayer.DeleteContact(id);
             return result;
         }
     }

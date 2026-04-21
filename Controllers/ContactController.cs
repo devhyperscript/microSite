@@ -48,5 +48,22 @@ namespace firstproject.Controllers
             var result = await _businessLayer.AddContact(model);
             return Ok(result);
         }
+
+
+        [HttpPut("updatecontact/{id}")]
+        public async Task<IActionResult> UpdateContact(int id, [FromForm] Contactmodel model)
+        {
+            var result = await _businessLayer.UpdateContact(id, model);
+            return Ok(result);
+        }
+
+
+        [HttpDelete("deletecontact/{id}")]
+
+        public async Task<IActionResult> DeleteContact(int id)
+        {
+            var result = await _businessLayer.DeleteContact(id);
+            return Ok(result);
+        }
     }
 }

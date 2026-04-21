@@ -76,3 +76,46 @@ CREATE TABLE contact (
     isread BOOLEAN DEFAULT FALSE,
     createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+CREATE TABLE product (
+    id SERIAL PRIMARY KEY,
+    productname VARCHAR(200) NOT NULL,
+    description TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    stock INT DEFAULT 0,
+
+    categoryid INT NOT NULL,
+    subcategoryid INT NOT NULL,
+    childcategoryid INT NOT NULL,
+    brandid INT,
+
+    sizeids INT[],
+    colorids INT[],
+    image TEXT,
+    imagegallery TEXT[],
+
+    isactive BOOLEAN DEFAULT TRUE,
+    createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_product_category
+        FOREIGN KEY (categoryid)
+        REFERENCES category("Id")
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_product_subcategory
+        FOREIGN KEY (subcategoryid)
+        REFERENCES subcategory("Id")
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_product_childcategory
+        FOREIGN KEY (childcategoryid)
+        REFERENCES childcategory("Id")
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_product_brand
+        FOREIGN KEY (brandid)
+        REFERENCES brand(id)
+        ON DELETE SET NULL
+    
+);
