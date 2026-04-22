@@ -7,7 +7,7 @@ namespace firstproject.Models.DatabaseLayer
         Task<List<childCategoryModel>> GetAllChildCategory();
         Task<childCategoryModel> Add(childCategoryModel model);
         Task<childCategoryModel> Edit(int id, childCategoryModel model);
-        Task<childCategoryModel> GetChildCategoryById(int id);
+        Task<childCategoryModel?> GetChildCategoryById(int id);
         Task<bool> DeleteChildCategory(int id);
     }
 
@@ -121,7 +121,7 @@ namespace firstproject.Models.DatabaseLayer
             return model;
         }
 
-        public async Task<childCategoryModel> GetChildCategoryById(int id)
+        public async Task<childCategoryModel?> GetChildCategoryById(int id)
         {
             childCategoryModel? childCategory = null;
             using var connection = new NpgsqlConnection(DbConnection);

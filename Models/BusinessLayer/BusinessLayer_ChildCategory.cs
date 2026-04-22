@@ -5,7 +5,7 @@
         Task<List<childCategoryModel>> GetAllChildCategory();
         Task<childCategoryModel> Add(childCategoryModel model);
         Task<childCategoryModel> Edit(int id, childCategoryModel model);
-        Task<childCategoryModel> GetChildCategoryById(int id);
+        Task<childCategoryModel?> GetChildCategoryById(int id);
         Task<bool> DeleteChildCategory(int id);
 
     }
@@ -27,7 +27,7 @@
             return await _databaseLayer.Edit(id, model);
         }
 
-        public async Task<childCategoryModel> GetChildCategoryById(int id)
+        public async Task<childCategoryModel?> GetChildCategoryById(int id)
         {
             return await _databaseLayer.GetChildCategoryById(id);
         }   

@@ -73,7 +73,7 @@ namespace firstproject.Models.DatabaseLayer
             await connection.OpenAsync();
 
             var command = new NpgsqlCommand(@"
-        INSERT INTO subcategory (""SubCategoryName"", ""SubCategoryImageUrl"", ""CategoryId"", ""Status"")
+        INSERT INTO subcategory (""SubCategoryName"", ""SubCategoryImageUrl"",  ""Status"")
         VALUES (@SubCategoryName, @SubCategoryImageUrl, @CategoryId, @Status)
         RETURNING ""Id"", ""CreatedAt"";
     ", connection);

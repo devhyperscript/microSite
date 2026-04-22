@@ -28,8 +28,6 @@ namespace firstproject.Controllers
         [Authorize]
         public async Task<IActionResult> Add([FromForm] SubCategoryModel model)
         {
-
-
             if (model.ImageFile == null)
                 return BadRequest(new
                 {
