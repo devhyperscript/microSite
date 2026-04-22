@@ -1,5 +1,6 @@
-﻿using firstproject.Models.BusinessLayer;
-using firstproject.Models;
+﻿using firstproject.Models;
+using firstproject.Models.BusinessLayer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace firstproject.Controllers
@@ -24,7 +25,9 @@ namespace firstproject.Controllers
 
 
         [HttpPost]
+        [Authorize]
         [Route("addsize")]
+       
 
         public async Task<IActionResult> AddSize([FromForm] Size size)
         {
@@ -34,7 +37,9 @@ namespace firstproject.Controllers
         }
 
         [HttpPut]
+        [Authorize]
         [Route("editsize/{id}")]
+       
         public async Task<IActionResult> EditSize(int id, [FromForm] Size size)
         {
             var result = await _businessLayer.EditSize(id, size);
@@ -43,7 +48,9 @@ namespace firstproject.Controllers
         }
 
         [HttpDelete]
+        [Authorize]
         [Route("deletesize/{id}")]
+      
         public async Task<IActionResult> DeleteSize(int id)
         {
             var result = await _businessLayer.DeleteSize(id);

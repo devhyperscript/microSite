@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace firstproject.Controllers
 {
     [ApiController]
-    [Authorize]
+   
     [Route("api/admin")]
     public class ColorController : ControllerBase
     {
@@ -26,6 +26,7 @@ namespace firstproject.Controllers
         }
 
         [HttpPost("addcolor")]
+        [Authorize]
         public async Task<IActionResult> AddColor([FromForm] Colormodel color)
         {
             var result = await _businessLayer.AddColor(color);
@@ -34,6 +35,7 @@ namespace firstproject.Controllers
 
 
         [HttpPut("editcolor/{id}")]
+        [Authorize]
         public async Task<IActionResult> EditColor(int id, [FromForm] Colormodel color)
         {
             var result = await _businessLayer.EditColor(id, color);
@@ -41,6 +43,7 @@ namespace firstproject.Controllers
         }
 
         [HttpDelete("deletecolor/{id}")]
+        [Authorize]
         public async Task<IActionResult> DeleteColor(int id)
         {
             var result = await _businessLayer.DeleteColor(id);

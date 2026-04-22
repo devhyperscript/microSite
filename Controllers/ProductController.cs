@@ -1,5 +1,6 @@
 ﻿using firstproject.Models;
 using firstproject.Models.BusinessLayer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 
@@ -26,6 +27,7 @@ namespace firstproject.Controllers
             return Ok(products);
         }
         [HttpPost("addproduct")]
+        [Authorize]
         public async Task<IActionResult> AddProduct([FromForm] Productmodel product)
         {
             string uploadsFolder = Path.Combine(_env.WebRootPath, "uploads");
@@ -77,6 +79,7 @@ namespace firstproject.Controllers
 
 
         [HttpPut("updateproduct/{id}")]
+        [Authorize]
         public async Task<IActionResult> UpdateProduct(int id, [FromForm] Productmodel product)
         {
             string uploadsFolder = Path.Combine(_env.WebRootPath, "uploads");
@@ -165,6 +168,7 @@ namespace firstproject.Controllers
 
 
         [HttpDelete("deleteproduct/{id}")]
+        [Authorize]
         public async Task<IActionResult> DeleteProduct(int id)
         {
             // ✅ Step 1: Pehle DB se product lo (image paths ke liye)

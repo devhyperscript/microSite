@@ -1,11 +1,16 @@
 ﻿using firstproject.Models;
 using firstproject.Models.BusinessLayer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace firstproject.Controllers
 {
     [ApiController]
+
+  
+
     [Route("api/admin")]
+
     public class BrandController : ControllerBase
     {
         private readonly IBusinessLayer _businessLayer;
@@ -17,6 +22,7 @@ namespace firstproject.Controllers
 
         [HttpGet]
         [Route("getbrand")]
+
         public async Task<IActionResult> Get()
         {
             var result = await _businessLayer.GetBrand();
@@ -24,6 +30,7 @@ namespace firstproject.Controllers
         }
 
         [HttpPost("addbrand")]
+        [Authorize]
         public async Task<IActionResult> Add([FromForm] Brandmodel model)
         {
             if (model.ImageFile == null)
@@ -48,6 +55,8 @@ namespace firstproject.Controllers
         }
 
         [HttpPut("editbrand/{id}")]
+        [Authorize]
+
         public async Task<IActionResult> Edit(int id, [FromForm] Brandmodel model)
         {
             // Image logic BusinessLayer mein handle hogi
@@ -56,6 +65,7 @@ namespace firstproject.Controllers
         }
 
         [HttpDelete("deletebrand/{id}")]
+        [Authorize]
         public async Task<IActionResult> Delete(int id)
         {
             var result = await _businessLayer.DeleteBrand(id);
