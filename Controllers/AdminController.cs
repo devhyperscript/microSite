@@ -63,11 +63,11 @@ namespace firstproject.Controllers
                 message = "Login successful",
                 data = new
                 {
-                    id = admin.Id,
-                    firstName = admin.FirstName,
-                    lastName = admin.LastName,
-                    phone = admin.Phone,
-                    email = admin.Email,
+                    //id = admin.Id,
+                    //firstName = admin.FirstName,
+                    //lastName = admin.LastName,
+                    //phone = admin.Phone,
+                    //email = admin.Email,
                     token = admin.Token,      // ✅ Sirf login mein token aayega
                   
                 }
