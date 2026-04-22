@@ -27,7 +27,7 @@ namespace firstproject.Models.DatabaseLayer
                 await connection.OpenAsync();
 
                 using (var command = new NpgsqlCommand(
-                    "SELECT id, size_name, description, is_active FROM sizes WHERE is_active = true",
+                    "SELECT id, size_name, description, is_active FROM sizes ",
                     connection))
                 {
                     using (var reader = await command.ExecuteReaderAsync())

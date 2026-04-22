@@ -1,5 +1,6 @@
 ﻿using firstproject.Models;
 using firstproject.Models.BusinessLayer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace firstproject.Controllers
@@ -26,6 +27,7 @@ namespace firstproject.Controllers
         }
 
         [HttpPost("addvariant")]
+        [Authorize]
         public async Task<IActionResult> AddVariant([FromForm] Variantmodel variant)
         {
             try
@@ -82,6 +84,7 @@ namespace firstproject.Controllers
 
 
         [HttpPut("updatevariant/{id}")]
+        [Authorize]
         public async Task<IActionResult> UpdateVariant(int id, [FromForm] Variantmodel variant)
         {
 
@@ -174,6 +177,7 @@ namespace firstproject.Controllers
 
 
         [HttpDelete("deletevariant/{id}")]
+        [Authorize]
         public async Task<IActionResult> DeleteVariant(int id)
         {
             try
