@@ -13,19 +13,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 // ✅ DB Connection
 var connectionString = builder.Configuration.GetConnectionString("AppDbContextConnection")
-    ?? throw new InvalidOperationException("Connection string not found.");
+    ?? throw new InvalidOperationException("Connection string 'AppDbContextConnection' not found.");
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
+builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
-// ✅ Identity
+// ✅ Identity Setup
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
-{
-    options.SignIn.RequireConfirmedAccount = false; // 🔥 temp off (debug ke liye)
-})
-.AddEntityFrameworkStores<AppDbContext>();
+    options.SignIn.RequireConfirmedAccount = true)
+    .AddEntityFrameworkStores<AppDbContext>();
 
-// ✅ JWT Setup
+// ✅ JWT Authentication Setup
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"];
 
@@ -36,62 +33,71 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false; // 🔥 VERY IMPORTANT (HTTP use kar rahe ho)
-    options.SaveToken = true;
-
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero, // 🔥 token expiry exact check
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(secretKey))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
     };
 });
 
-// ✅ 🔥 CORS FIX (IMPORTANT CHANGE)
+
+// ✅ 🔥 CORS ADD KIYA (NEW)
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy
-            .SetIsOriginAllowed(origin => true) // 🔥 sab allow (debug ke liye best)
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials(); // 🔥 important
-    });
+    options.AddPolicy("AllowFrontend",
+        policy =>
+        {
+            policy
+                .WithOrigins(
+                    "http://localhost",
+                    "http://localhost:5173",
+                    "http://microsite.workarya.com",
+                    "https://microsite.workarya.com"
+                ) 
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+        });
+
 });
+
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<IDatabaseLayer, DatabaseLayer>();
 builder.Services.AddScoped<IBusinessLayer, BusinessLayer>();
+
+// ✅ JwtHelper register
 builder.Services.AddScoped<JwtHelper>();
 
 var app = builder.Build();
 
-// ❌ HSTS disable for now (HTTP testing)
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // app.UseHsts(); ❌ comment
+    app.UseHsts();
 }
 
+app.UseHttpsRedirection();
 app.UseRouting();
 
-// ❗ IMPORTANT ORDER (bahut log yaha galti karte hain)
+// ✅ 🔥 CORS USE KIYA (VERY IMPORTANT - NEW)
 app.UseCors("AllowFrontend");
 
+// ✅ Authentication pehle
 app.UseAuthentication();
+
+// ✅ Authorization baad me
 app.UseAuthorization();
 
-app.UseStaticFiles();
+app.MapStaticAssets();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Home}/{action=Index}/{id?}")
+    .WithStaticAssets();
 
 app.Run();
