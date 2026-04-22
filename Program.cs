@@ -56,11 +56,13 @@ builder.Services.AddCors(options =>
                 .WithOrigins(
                     "http://localhost",
                     "http://localhost:5173",
-                    "http://microsite.workarya.com"
-                ) // 👉 sirf allowed domains
+                    "http://microsite.workarya.com",
+                    "https://microsite.workarya.com"
+                ) 
                 .AllowAnyMethod()
                 .AllowAnyHeader();
         });
+
 });
 
 
