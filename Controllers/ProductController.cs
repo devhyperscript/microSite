@@ -11,6 +11,7 @@ namespace firstproject.Controllers
     public class ProductController : ControllerBase
     {
 
+
         private readonly IBusinessLayer _businessLayer;
         private readonly IWebHostEnvironment _env; // ✅ add karo
 
@@ -202,5 +203,6 @@ namespace firstproject.Controllers
             var result = await _businessLayer.DeleteProduct(id);
             return Ok(result);
         }
+
     }
 }

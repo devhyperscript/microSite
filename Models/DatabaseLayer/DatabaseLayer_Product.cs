@@ -36,7 +36,9 @@ namespace firstproject.Models.DatabaseLayer
             SELECT 
                 p.id,
                 p.productname,
-p.slug,
+                p.slug,
+p.sku,
+p.shortdescription,
                 p.description,
                 p.price,
                 p.stock,
@@ -88,6 +90,10 @@ p.slug,
                                 ProductName = reader["productname"]?.ToString(),
                                 Slug = reader.IsDBNull(reader.GetOrdinal("slug"))
                                                 ? null : reader["slug"].ToString(),
+                                Sku = reader.IsDBNull(reader.GetOrdinal("sku"))
+                                                ? null : reader["sku"].ToString(),
+                                ShortDescription = reader.IsDBNull(reader.GetOrdinal("shortdescription"))
+                                                ? null : reader["shortdescription"].ToString(),
                                 Description = reader.IsDBNull(reader.GetOrdinal("description"))
                                                 ? null : reader["description"].ToString(),
                                 Price = reader.GetDecimal(reader.GetOrdinal("price")),
@@ -148,12 +154,14 @@ p.slug,
                 await connection.OpenAsync();
                 using (var command = new NpgsqlCommand(@"
                     INSERT INTO product 
-                    (productname, slug, description, price, stock, categoryid, subcategoryid, childcategoryid, brandid, sizeids, colorids, image, imagegallery, isactive, createdat) 
+                    (productname, slug, sku, shortdescription, description, price, stock, categoryid, subcategoryid, childcategoryid, brandid, sizeids, colorids, image, imagegallery, isactive, createdat) 
                     VALUES 
-                    (@productname,@slug, @description, @price, @stock, @categoryid, @subcategoryid, @childcategoryid, @brandid, @sizeids, @colorids, @image, @imagegallery, @isactive, @createdat)", connection))
+                    (@productname,@slug, @sku, @shortdescription, @description, @price, @stock, @categoryid, @subcategoryid, @childcategoryid, @brandid, @sizeids, @colorids, @image, @imagegallery, @isactive, @createdat)", connection))
                 {
                     command.Parameters.AddWithValue("@productname", product.ProductName);
                     command.Parameters.AddWithValue("@slug", product.Slug ?? Guid.NewGuid().ToString()); // Generate slug if not provided
+                    command.Parameters.AddWithValue("@sku", (object)product.Sku ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@shortdescription", (object)product.ShortDescription ?? DBNull.Value);
                     command.Parameters.AddWithValue("@description", (object)product.Description ?? DBNull.Value);
                     command.Parameters.AddWithValue("@price", product.Price);
                     command.Parameters.AddWithValue("@stock", product.Stock);
@@ -198,6 +206,8 @@ p.slug,
             UPDATE product SET 
             productname = @productname, 
 slug = @slug,
+sku = @sku,
+shortdescription = @shortdescription,
             description = @description, 
             price = @price, 
             stock = @stock, 
@@ -215,6 +225,8 @@ slug = @slug,
                     command.Parameters.AddWithValue("@id", id);
                     command.Parameters.AddWithValue("@productname", product.ProductName);
                     command.Parameters.AddWithValue("@slug", product.Slug ?? Guid.NewGuid().ToString()); // Generate slug if not provided
+                    command.Parameters.AddWithValue("@sku", (object?)product.Sku ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@shortdescription", (object?)product.ShortDescription ?? DBNull.Value);
                     command.Parameters.AddWithValue("@description", (object?)product.Description ?? DBNull.Value);
                     command.Parameters.AddWithValue("@price", product.Price);
                     command.Parameters.AddWithValue("@stock", product.Stock);
@@ -261,7 +273,7 @@ slug = @slug,
                 await connection.OpenAsync();
 
                 using (var command = new NpgsqlCommand(@"
-            SELECT id, productname, slug, description, price, stock,
+            SELECT id, productname, slug, sku, shortdescription, description, price, stock,
                    categoryid, subcategoryid, childcategoryid,
                    brandid, sizeids, colorids,
                    image, imagegallery, isactive, createdat
@@ -279,6 +291,10 @@ slug = @slug,
                                 ProductName = reader["productname"]?.ToString(),
                                 Slug = reader.IsDBNull(reader.GetOrdinal("slug"))
                                                 ? null : reader["slug"].ToString(),
+                                Sku = reader.IsDBNull(reader.GetOrdinal("sku")) 
+                                                ? null : reader["sku"].ToString(),
+                                ShortDescription = reader.IsDBNull(reader.GetOrdinal("shortdescription"))
+                                                ? null : reader["shortdescription"].ToString(),
                                 Description = reader.IsDBNull(reader.GetOrdinal("description"))
                                                 ? null : reader["description"].ToString(),
                                 Price = reader.GetDecimal(reader.GetOrdinal("price")),
