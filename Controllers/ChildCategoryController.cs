@@ -27,32 +27,49 @@ namespace firstproject.Controllers
         [Authorize]
         public async Task<IActionResult> Add([FromForm] childCategoryModel model)
         {
-            if (model.ImageFile == null)
-                return BadRequest(new
+            try
+            {
+                // ✅ Image agar hai tabhi upload karo
+                if (model.ImageFile != null && model.ImageFile.Length > 0)
+                {
+                    var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+
+                    if (!Directory.Exists(uploadPath))
+                        Directory.CreateDirectory(uploadPath);
+
+                    var fileName = Guid.NewGuid().ToString() + Path.GetExtension(model.ImageFile.FileName);
+                    var filePath = Path.Combine(uploadPath, fileName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await model.ImageFile.CopyToAsync(stream);
+                    }
+
+                    model.ChildCategoryImageUrl = "/uploads/" + fileName;
+                }
+                else
+                {
+                    // ✅ Image nahi aayi to NULL allow karo
+                    model.ChildCategoryImageUrl = null;
+                }
+
+                var result = await _businessLayer.Add(model);
+
+                return Ok(new
+                {
+                    status = true,
+                    message = "Child Category added successfully",
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
                 {
                     status = false,
-                    message = "ImageFile is NULL",
-                    contentType = Request.ContentType  // ← Postman mein dekho kya aa raha hai
+                    message = ex.Message
                 });
-
-            var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
-            if (!Directory.Exists(uploadPath))
-                Directory.CreateDirectory(uploadPath);
-            var fileName = Guid.NewGuid().ToString() + Path.GetExtension(model.ImageFile.FileName);
-            var filePath = Path.Combine(uploadPath, fileName);
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await model.ImageFile.CopyToAsync(stream);
             }
-            model.ChildCategoryImageUrl = "/uploads/" + fileName;
-            var result = await _businessLayer.Add(model);
-            return Ok(new
-            {
-                status = true,
-                message = "Child Category added successfully",
-                //data = result
-            });
-
         }
 
         [HttpPut("edit/{id}")]
