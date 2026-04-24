@@ -18,7 +18,7 @@ namespace firstproject.Controllers
             _jwtHelper = jwtHelper;
         }
 
-        // POST api/admin/login
+        // POST api/admin/login ok
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromForm] AdminLoginModel model)
         {
