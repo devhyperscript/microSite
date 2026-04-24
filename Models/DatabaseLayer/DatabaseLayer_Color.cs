@@ -1,5 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Npgsql;
+using System.Drawing;
+using System.Linq;
+
+
 
 namespace firstproject.Models.DatabaseLayer
 {
@@ -52,6 +56,33 @@ namespace firstproject.Models.DatabaseLayer
 
         public async Task<IActionResult> AddColor([FromForm] Colormodel color)
         {
+            if (!string.IsNullOrEmpty(color.Colorname) && string.IsNullOrEmpty(color.Colorcode))
+            {
+                var knownColors = Enum.GetValues(typeof(KnownColor))
+                                      .Cast<KnownColor>()
+                                      .Select(c => Color.FromKnownColor(c));
+
+                var match = knownColors.FirstOrDefault(c =>
+                    c.Name.Equals(color.Colorname, StringComparison.OrdinalIgnoreCase));
+
+                if (match.IsEmpty)
+                {
+                    match = knownColors.FirstOrDefault(c =>
+                        c.Name.ToLower().Contains(color.Colorname.ToLower()) ||
+                        color.Colorname.ToLower().Contains(c.Name.ToLower()));
+                }
+
+                if (!match.IsEmpty)
+                {
+                    color.Colorcode = $"#{match.R:X2}{match.G:X2}{match.B:X2}";
+                }
+                else
+                {
+                    // 👉 fallback (default color de do instead of error)
+                    color.Colorcode = "#000000"; // black default
+                }
+            }
+
             using (var connection = new NpgsqlConnection(this.DbConnection))
             {
                 await connection.OpenAsync();
@@ -62,7 +93,9 @@ namespace firstproject.Models.DatabaseLayer
                     command.Parameters.AddWithValue("@colorname", color.Colorname ?? (object)DBNull.Value);
                     command.Parameters.AddWithValue("@colorcode", color.Colorcode ?? (object)DBNull.Value);
                     command.Parameters.AddWithValue("@isactive", color.Isactive);
+
                     var result = await command.ExecuteScalarAsync();
+
                     if (result != null && int.TryParse(result.ToString(), out int newId))
                     {
                         color.Id = newId;
@@ -74,7 +107,6 @@ namespace firstproject.Models.DatabaseLayer
                     }
                 }
             }
-
         }
 
 
