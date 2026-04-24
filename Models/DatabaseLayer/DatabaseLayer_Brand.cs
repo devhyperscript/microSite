@@ -58,7 +58,7 @@ namespace firstproject.Models.DatabaseLayer
                 {
                     command.Parameters.AddWithValue("@brandname", model.BrandName);
                     command.Parameters.AddWithValue("@brandimage", model.BrandImage);
-                    command.Parameters.AddWithValue("@isactive", true);
+                    command.Parameters.AddWithValue("@isactive", model.IsActive);
 
                     var id = (int)await command.ExecuteScalarAsync();
                     model.Id = id;
