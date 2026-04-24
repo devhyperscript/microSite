@@ -9,6 +9,7 @@ namespace firstproject.Models.DatabaseLayer
         Task<Brandmodel> Add(Brandmodel model);
         Task<IActionResult> Edit(int id, [FromForm] Brandmodel model);
         Task<IActionResult> DeleteBrand(int id);
+        Task<Brandmodel> GetBrandById(int id);
     }
 
     public partial class DatabaseLayer : IDatabaseLayer
@@ -57,7 +58,15 @@ namespace firstproject.Models.DatabaseLayer
                     connection))
                 {
                     command.Parameters.AddWithValue("@brandname", model.BrandName);
-                    command.Parameters.AddWithValue("@brandimage", model.BrandImage);
+
+                    // Handle NULL image properly
+                    command.Parameters.AddWithValue(
+                        "@brandimage",
+                        string.IsNullOrEmpty(model.BrandImage)
+                            ? (object)DBNull.Value
+                            : model.BrandImage
+                    );
+
                     command.Parameters.AddWithValue("@isactive", model.IsActive);
 
                     var id = (int)await command.ExecuteScalarAsync();
@@ -91,6 +100,33 @@ namespace firstproject.Models.DatabaseLayer
                         return new NotFoundResult();
                 }
             }
+        }
+        public async Task<Brandmodel> GetBrandById(int id)
+        {
+            using (var connection = new NpgsqlConnection(this.DbConnection))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand(
+                    "SELECT id, brandname, brandimage, isactive FROM brand WHERE id = @id",
+                    connection))
+                {
+                    command.Parameters.AddWithValue("@id", id);
+                    using (var reader = await command.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            return new Brandmodel
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                                BrandName = reader["brandname"]?.ToString(),
+                                BrandImage = reader["brandimage"]?.ToString(),
+                                IsActive = reader.GetBoolean(reader.GetOrdinal("isactive"))
+                            };
+                        }
+                    }
+                }
+            }
+            return null; // Return null if not found
         }
 
         public async Task<IActionResult> DeleteBrand(int id)
