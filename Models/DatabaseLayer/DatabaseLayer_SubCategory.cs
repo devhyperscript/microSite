@@ -73,7 +73,7 @@ namespace firstproject.Models.DatabaseLayer
             await connection.OpenAsync();
 
             var command = new NpgsqlCommand(@"
-        INSERT INTO subcategory (""SubCategoryName"", ""SubCategoryImageUrl"",  ""Status"")
+        INSERT INTO subCategory (""SubCategoryName"", ""SubCategoryImageUrl"", ""CategoryId"", ""Status"")
         VALUES (@SubCategoryName, @SubCategoryImageUrl, @CategoryId, @Status)
         RETURNING ""Id"", ""CreatedAt"";
     ", connection);
@@ -81,8 +81,7 @@ namespace firstproject.Models.DatabaseLayer
             command.Parameters.AddWithValue("@SubCategoryName", model.SubCategoryName ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@SubCategoryImageUrl", model.SubCategoryImageUrl ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@CategoryId", model.CategoryId);
-            command.Parameters.AddWithValue("@Status", true);
-            // ❌ @CreatedAt REMOVE kar diya — DB khud set karta hai DEFAULT se
+            command.Parameters.AddWithValue("@Status", model.Status);
 
             using (var reader = await command.ExecuteReaderAsync())
             {

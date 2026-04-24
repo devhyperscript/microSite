@@ -28,35 +28,37 @@ namespace firstproject.Controllers
         [Authorize]
         public async Task<IActionResult> Add([FromForm] SubCategoryModel model)
         {
-            if (model.ImageFile == null)
-                return BadRequest(new
-                {
-                    status = false,
-                    message = "ImageFile is NULL",
-                    contentType = Request.ContentType  // ← Postman mein dekho kya aa raha hai
-                });
-
-            var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
-
-            if (!Directory.Exists(uploadPath))
-                Directory.CreateDirectory(uploadPath);
-
-            var fileName = Guid.NewGuid().ToString() + Path.GetExtension(model.ImageFile.FileName);
-            var filePath = Path.Combine(uploadPath, fileName);
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            // ✅ Agar image hai tabhi upload karo
+            if (model.ImageFile != null && model.ImageFile.Length > 0)
             {
-                await model.ImageFile.CopyToAsync(stream);
-            }
+                var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
 
-            model.SubCategoryImageUrl = "/uploads/" + fileName;
+                if (!Directory.Exists(uploadPath))
+                    Directory.CreateDirectory(uploadPath);
+
+                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(model.ImageFile.FileName);
+                var filePath = Path.Combine(uploadPath, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await model.ImageFile.CopyToAsync(stream);
+                }
+
+                model.SubCategoryImageUrl = "/uploads/" + fileName;
+            }
+            else
+            {
+                // ✅ Agar image nahi hai to null ya empty set karo
+                model.SubCategoryImageUrl = null;
+            }
 
             var result = await _businessLayer.Add(model);
 
             return Ok(new
             {
                 status = true,
-                message = "Record successfully added"
+                message = "Record successfully added",
+
             });
         }
 
