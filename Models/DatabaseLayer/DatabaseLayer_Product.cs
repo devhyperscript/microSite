@@ -38,6 +38,7 @@ p.sku,
 p.shortdescription,
                 p.description,
                 p.price,
+                p.discountprice,
                 p.stock,
                 p.categoryid,
                 p.subcategoryid,
@@ -94,6 +95,8 @@ p.shortdescription,
                                 Description = reader.IsDBNull(reader.GetOrdinal("description"))
                                                 ? null : reader["description"].ToString(),
                                 Price = reader.GetDecimal(reader.GetOrdinal("price")),
+                                DiscountPrice = reader.IsDBNull(reader.GetOrdinal("discountprice"))
+                                                ? null : reader.GetDecimal(reader.GetOrdinal("discountprice")),
                                 Stock = reader.GetInt32(reader.GetOrdinal("stock")),
                                 CategoryId = reader.GetInt32(reader.GetOrdinal("categoryid")),
                                 SubCategoryId = reader.GetInt32(reader.GetOrdinal("subcategoryid")),
@@ -162,9 +165,9 @@ p.shortdescription,
 
                 using (var command = new NpgsqlCommand(@"
             INSERT INTO product 
-            (productname, slug, sku, shortdescription, description, price, stock, categoryid, subcategoryid, childcategoryid, brandid, sizeids, colorids, image, imagegallery, isactive, createdat) 
+            (productname, slug, sku, shortdescription, description, price, discountprice,   stock, categoryid, subcategoryid, childcategoryid, brandid, sizeids, colorids, image, imagegallery, isactive, createdat) 
             VALUES 
-            (@productname,@slug, @sku, @shortdescription, @description, @price, @stock, @categoryid, @subcategoryid, @childcategoryid, @brandid, @sizeids, @colorids, @image, @imagegallery, @isactive, @createdat)", connection))
+            (@productname,@slug, @sku, @shortdescription, @description, @price, @discountprice, @stock, @categoryid, @subcategoryid, @childcategoryid, @brandid, @sizeids, @colorids, @image, @imagegallery, @isactive, @createdat)", connection))
                 {
                     command.Parameters.AddWithValue("@productname", product.ProductName);
                     command.Parameters.AddWithValue("@slug", product.Slug); // ✅ FIXED
@@ -172,6 +175,7 @@ p.shortdescription,
                     command.Parameters.AddWithValue("@shortdescription", (object)product.ShortDescription ?? DBNull.Value);
                     command.Parameters.AddWithValue("@description", (object)product.Description ?? DBNull.Value);
                     command.Parameters.AddWithValue("@price", product.Price);
+                    command.Parameters.AddWithValue("@discountprice", (object?)product.DiscountPrice ?? DBNull.Value);
                     command.Parameters.AddWithValue("@stock", product.Stock);
                     command.Parameters.AddWithValue("@categoryid", product.CategoryId);
                     command.Parameters.AddWithValue("@subcategoryid", product.SubCategoryId);
@@ -223,6 +227,7 @@ sku = @sku,
 shortdescription = @shortdescription,
             description = @description, 
             price = @price, 
+            discountprice = @discountprice,
             stock = @stock, 
             categoryid = @categoryid,
             subcategoryid = @subcategoryid,
@@ -242,6 +247,7 @@ shortdescription = @shortdescription,
                     command.Parameters.AddWithValue("@shortdescription", (object?)product.ShortDescription ?? DBNull.Value);
                     command.Parameters.AddWithValue("@description", (object?)product.Description ?? DBNull.Value);
                     command.Parameters.AddWithValue("@price", product.Price);
+                    command.Parameters.AddWithValue("@discountprice", (object?)product.DiscountPrice ?? DBNull.Value);
                     command.Parameters.AddWithValue("@stock", product.Stock);
                     command.Parameters.AddWithValue("@categoryid", product.CategoryId);        // ✅ fix
                     command.Parameters.AddWithValue("@subcategoryid", product.SubCategoryId);
@@ -286,7 +292,7 @@ shortdescription = @shortdescription,
                 await connection.OpenAsync();
 
                 using (var command = new NpgsqlCommand(@"
-            SELECT id, productname, slug, sku, shortdescription, description, price, stock,
+            SELECT id, productname, slug, sku, shortdescription, description, price, discountprice, stock,
                    categoryid, subcategoryid, childcategoryid,
                    brandid, sizeids, colorids,
                    image, imagegallery, isactive, createdat
@@ -311,6 +317,8 @@ shortdescription = @shortdescription,
                                 Description = reader.IsDBNull(reader.GetOrdinal("description"))
                                                 ? null : reader["description"].ToString(),
                                 Price = reader.GetDecimal(reader.GetOrdinal("price")),
+                                DiscountPrice = reader.IsDBNull(reader.GetOrdinal("discountprice"))
+                                                ? null : reader.GetDecimal(reader.GetOrdinal("discountprice")),
                                 Stock = reader.GetInt32(reader.GetOrdinal("stock")),
                                 CategoryId = reader.GetInt32(reader.GetOrdinal("categoryid")),
                                 SubCategoryId = reader.GetInt32(reader.GetOrdinal("subcategoryid")),

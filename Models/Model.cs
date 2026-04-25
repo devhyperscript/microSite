@@ -153,6 +153,8 @@ namespace firstproject.Models
         public string? ShortDescription { get; set; }
         public string? Description { get; set; }
         public decimal Price { get; set; }
+
+        public decimal? DiscountPrice { get; set; }
         public int Stock { get; set; }
         public int CategoryId { get; set; }
         public int SubCategoryId { get; set; }

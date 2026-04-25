@@ -109,6 +109,7 @@ CREATE TABLE product (
     shortdescription TEXT,
     description TEXT,
     price DECIMAL(10,2) NOT NULL,
+    discountprice DECIMAL(10,2),
     stock INT DEFAULT 0,
 
     categoryid INT NOT NULL,
