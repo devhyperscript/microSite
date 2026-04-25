@@ -185,3 +185,10 @@ CREATE TABLE variant (
 );
 
 
+CREATE TABLE customerlogo (
+    id SERIAL PRIMARY KEY,
+    customername VARCHAR(255) NOT NULL,
+    customerimage TEXT,
+    status BOOLEAN DEFAULT TRUE,
+    createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

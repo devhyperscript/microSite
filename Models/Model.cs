@@ -1,4 +1,7 @@
 ﻿
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.Blazor;
+
 namespace firstproject.Models
 
 
@@ -95,6 +98,17 @@ namespace firstproject.Models
         public string? BrandImage { get; set; }
         public IFormFile? ImageFile { get; set; }
         public bool IsActive { get; set; } = true;
+    }
+
+    public class customermodel
+    {
+        public int id { get; set; }
+        public string? customername { get; set; }
+        public string? customerimage { get; set; }
+        public IFormFile? ImageFile { get; set; }
+        public bool status { get; set; } = true;
+
+        public DateTime createdat { get; set; }
     }
 
     public class Colormodel
@@ -209,6 +223,7 @@ namespace firstproject.Models
         public string[]? SizeNames { get; set; }
         public string[]? ColorNames { get; set; }
     }
+
 
 
 
