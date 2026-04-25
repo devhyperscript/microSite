@@ -15,7 +15,7 @@ namespace firstproject.Models
         public string? PasswordHash { get; set; }
         public DateTime CreatedAt { get; set; }
 
-        public string Token { get; set; }
+        public string? Token { get; set; }
     }
 
     public class AdminLoginModel
