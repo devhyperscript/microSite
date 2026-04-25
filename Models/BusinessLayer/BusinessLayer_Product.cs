@@ -1,46 +1,97 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using firstproject.Models.DatabaseLayer;
+using Microsoft.AspNetCore.Mvc;
+using System.Text.RegularExpressions;
 
 namespace firstproject.Models.BusinessLayer
 {
-   public partial interface IBusinessLayer
+    public partial interface IBusinessLayer
     {
         Task<List<Productmodel>> GetProduct();
-        Task<IActionResult> AddProduct([FromForm] Productmodel product);
+        Task<IActionResult> AddProduct(Productmodel product);
         Task<Productmodel?> GetProductById(int id);
-        Task<IActionResult> UpdateProduct(int id, [FromForm] Productmodel product);
+        Task<IActionResult> UpdateProduct(int id, Productmodel product);
         Task<IActionResult> DeleteProduct(int id);
     }
+
     public partial class BusinessLayer : IBusinessLayer
     {
+       
+
+        public BusinessLayer(IDatabaseLayer databaseLayer)
+        {
+            _databaseLayer = databaseLayer;
+        }
+
+        // ✅ Get All Products
         public async Task<List<Productmodel>> GetProduct()
         {
-            var result = await _databaseLayer.GetProduct();
-            return result;
+            return await _databaseLayer.GetProduct();
         }
 
-       
-        public async Task<IActionResult> AddProduct([FromForm] Productmodel product)
+        // ✅ Add Product
+        public async Task<IActionResult> AddProduct(Productmodel product)
         {
-            var result = await _databaseLayer.AddProduct(product);
-            return result;
-        }
-public async Task<Productmodel?> GetProductById(int id)
-        {
-            var result = await _databaseLayer.GetProductById(id);
-            return result;
-        }
-        public async Task<IActionResult> UpdateProduct(int id, [FromForm] Productmodel product)
-        {
-            var result = await _databaseLayer.UpdateProduct(id, product);
-            return result;
+            // 🔥 Basic validation
+            if (string.IsNullOrWhiteSpace(product.ProductName))
+                return new BadRequestObjectResult(new { status = false, message = "Product name is required" });
+
+            if (product.Price <= 0)
+                return new BadRequestObjectResult(new { status = false, message = "Price must be greater than 0" });
+
+            // 🔥 Slug generate (safety)
+            if (string.IsNullOrEmpty(product.Slug))
+            {
+                var baseSlug = GenerateSlug(product.ProductName);
+                product.Slug = baseSlug + "-" + Guid.NewGuid().ToString().Substring(0, 5);
+            }
+
+            return await _databaseLayer.AddProduct(product);
         }
 
+        // ✅ Get By Id
+        public async Task<Productmodel?> GetProductById(int id)
+        {
+            return await _databaseLayer.GetProductById(id);
+        }
+
+        // ✅ Update Product
+        public async Task<IActionResult> UpdateProduct(int id, Productmodel product)
+        {
+            if (id <= 0)
+                return new BadRequestObjectResult(new { status = false, message = "Invalid product id" });
+
+            if (string.IsNullOrWhiteSpace(product.ProductName))
+                return new BadRequestObjectResult(new { status = false, message = "Product name is required" });
+
+            // 🔥 Update slug if name changed
+            if (string.IsNullOrEmpty(product.Slug))
+            {
+                product.Slug = GenerateSlug(product.ProductName);
+            }
+
+            return await _databaseLayer.UpdateProduct(id, product);
+        }
+
+        // ✅ Delete Product
         public async Task<IActionResult> DeleteProduct(int id)
         {
-            var result = await _databaseLayer.DeleteProduct(id);
-            return result;
+            if (id <= 0)
+                return new BadRequestObjectResult(new { status = false, message = "Invalid product id" });
+
+            return await _databaseLayer.DeleteProduct(id);
         }
 
+        // 🔥 Slug Generator
+        private string GenerateSlug(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return Guid.NewGuid().ToString();
 
+            text = text.ToLower();
+            text = Regex.Replace(text, @"[^a-z0-9\s-]", "");
+            text = Regex.Replace(text, @"\s+", " ").Trim();
+
+            return text.Replace(" ", "-");
+        }
     }
 }

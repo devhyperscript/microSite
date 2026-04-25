@@ -32,7 +32,7 @@ namespace firstproject.Controllers
         public async Task<IActionResult> AddProduct([FromForm] Productmodel product)
         {
             string uploadsFolder = Path.Combine(_env.WebRootPath, "uploads");
-            Directory.CreateDirectory(uploadsFolder); // ✅ folder na ho toh bana do
+            Directory.CreateDirectory(uploadsFolder);
 
             // ✅ Main image save
             if (product.ImageFile != null && product.ImageFile.Length > 0)
@@ -46,7 +46,7 @@ namespace firstproject.Controllers
                     await product.ImageFile.CopyToAsync(stream);
                 }
 
-                product.Image = "/uploads/" + uniqueFileName; // ✅ DB mein yahi path jayegi
+                product.Image = "/uploads/" + uniqueFileName;
             }
 
             // ✅ Gallery images save
@@ -71,12 +71,33 @@ namespace firstproject.Controllers
                     }
                 }
 
-                product.ImageGallery = galleryPaths.ToArray(); // ✅ DB mein yahi paths jayengi
+                product.ImageGallery = galleryPaths.ToArray();
             }
 
+            // 🔥 ✅ YAHI SLUG CODE LAGANA HAI
+            product.Slug = !string.IsNullOrEmpty(product.Slug)
+                ? product.Slug
+                : GenerateSlug(product.ProductName);
+
+            // ✅ Business layer call
             var result = await _businessLayer.AddProduct(product);
             return Ok(result);
         }
+
+        private string GenerateSlug(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return Guid.NewGuid().ToString();
+
+            text = text.ToLower();
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"[^a-z0-9\s-]", "");
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ").Trim();
+            text = text.Replace(" ", "-");
+
+            return text;
+        }
+
+
 
 
         [HttpPut("updateproduct/{id}")]

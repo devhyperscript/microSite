@@ -8,12 +8,9 @@ namespace firstproject.Models.DatabaseLayer
     public partial interface IDatabaseLayer
     {
         Task<List<Productmodel>> GetProduct();
-
-        Task<IActionResult> AddProduct([FromForm] Productmodel product);
-        Task<IActionResult> UpdateProduct(int id, [FromForm] Productmodel product);
-
+        Task<IActionResult> AddProduct(Productmodel product);
         Task<Productmodel?> GetProductById(int id);
-
+        Task<IActionResult> UpdateProduct(int id, Productmodel product);
         Task<IActionResult> DeleteProduct(int id);
 
 
@@ -147,19 +144,30 @@ p.shortdescription,
 
 
 
-        public async Task<IActionResult> AddProduct([FromForm] Productmodel product)
+        public async Task<IActionResult> AddProduct(Productmodel product)
         {
             using (var connection = new NpgsqlConnection(this.DbConnection))
             {
                 await connection.OpenAsync();
+
+                // 🔥 OPTIONAL: slug duplicate check
+                var checkCmd = new NpgsqlCommand("SELECT COUNT(*) FROM product WHERE slug=@slug", connection);
+                checkCmd.Parameters.AddWithValue("@slug", product.Slug);
+                var count = (long)await checkCmd.ExecuteScalarAsync();
+
+                if (count > 0)
+                {
+                    product.Slug = product.Slug + "-" + Guid.NewGuid().ToString().Substring(0, 5);
+                }
+
                 using (var command = new NpgsqlCommand(@"
-                    INSERT INTO product 
-                    (productname, slug, sku, shortdescription, description, price, stock, categoryid, subcategoryid, childcategoryid, brandid, sizeids, colorids, image, imagegallery, isactive, createdat) 
-                    VALUES 
-                    (@productname,@slug, @sku, @shortdescription, @description, @price, @stock, @categoryid, @subcategoryid, @childcategoryid, @brandid, @sizeids, @colorids, @image, @imagegallery, @isactive, @createdat)", connection))
+            INSERT INTO product 
+            (productname, slug, sku, shortdescription, description, price, stock, categoryid, subcategoryid, childcategoryid, brandid, sizeids, colorids, image, imagegallery, isactive, createdat) 
+            VALUES 
+            (@productname,@slug, @sku, @shortdescription, @description, @price, @stock, @categoryid, @subcategoryid, @childcategoryid, @brandid, @sizeids, @colorids, @image, @imagegallery, @isactive, @createdat)", connection))
                 {
                     command.Parameters.AddWithValue("@productname", product.ProductName);
-                    command.Parameters.AddWithValue("@slug", product.Slug ?? Guid.NewGuid().ToString()); // Generate slug if not provided
+                    command.Parameters.AddWithValue("@slug", product.Slug); // ✅ FIXED
                     command.Parameters.AddWithValue("@sku", (object)product.Sku ?? DBNull.Value);
                     command.Parameters.AddWithValue("@shortdescription", (object)product.ShortDescription ?? DBNull.Value);
                     command.Parameters.AddWithValue("@description", (object)product.Description ?? DBNull.Value);
@@ -167,8 +175,9 @@ p.shortdescription,
                     command.Parameters.AddWithValue("@stock", product.Stock);
                     command.Parameters.AddWithValue("@categoryid", product.CategoryId);
                     command.Parameters.AddWithValue("@subcategoryid", product.SubCategoryId);
-                    command.Parameters.AddWithValue("@childcategoryid", product.ChildCategoryId);
-                    command.Parameters.AddWithValue("@brandid", (object)product.BrandId ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@childcategoryid", (object?)product.ChildCategoryId ?? DBNull.Value);
+                    command.Parameters.AddWithValue("@brandid", (object?)product.BrandId ?? DBNull.Value);
+
                     command.Parameters.Add(new NpgsqlParameter("@sizeids", NpgsqlDbType.Array | NpgsqlDbType.Integer)
                     {
                         Value = (object?)product.SizeIds ?? DBNull.Value
@@ -178,26 +187,30 @@ p.shortdescription,
                     {
                         Value = (object?)product.ColorIds ?? DBNull.Value
                     });
-                    command.Parameters.AddWithValue("@image", (object)product.Image ?? DBNull.Value);
+
+                    command.Parameters.AddWithValue("@image", (object?)product.Image ?? DBNull.Value);
+
                     command.Parameters.Add(new NpgsqlParameter("@imagegallery", NpgsqlDbType.Array | NpgsqlDbType.Text)
                     {
                         Value = (object?)product.ImageGallery ?? DBNull.Value
                     });
+
                     command.Parameters.AddWithValue("@isactive", product.IsActive);
                     command.Parameters.AddWithValue("@createdat", DateTime.UtcNow);
+
                     int rowsAffected = await command.ExecuteNonQueryAsync();
+
                     if (rowsAffected > 0)
                         return new OkObjectResult(new { status = true, message = "Product added successfully" });
                     else
                         return new BadRequestObjectResult(new { status = false, message = "Failed to add product" });
                 }
             }
-
         }
 
 
 
-        public async Task<IActionResult> UpdateProduct(int id, [FromForm] Productmodel product)
+        public async Task<IActionResult> UpdateProduct(int id, Productmodel product)
         {
             using (var connection = new NpgsqlConnection(this.DbConnection))
             {
