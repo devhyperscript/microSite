@@ -205,6 +205,7 @@ namespace firstproject.Models
         public int[]? ColorId { get; set; }
 
         public decimal Price { get; set; }
+        public decimal? DiscountPrice { get; set; }
         public int Stock { get; set; }
 
         public string? Sku { get; set; }
