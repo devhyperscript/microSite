@@ -225,6 +225,37 @@ namespace firstproject.Models
         public string[]? ColorNames { get; set; }
     }
 
+    public class CartItemModel
+    {
+        // 🔑 Cart Info
+        public int id { get; set; }
+        public int? userid { get; set; }      // nullable (guest ke liye)
+        public string? ipaddress { get; set; } // guest user ke liye
+
+        public int productid { get; set; }
+        public int quantity { get; set; } = 1;
+
+        // 🛍 Product Info (JOIN se aayega)
+        public string? ProductName { get; set; }
+        public string? Slug { get; set; }
+        public string? Image { get; set; }
+
+        public decimal Price { get; set; }
+        public decimal? DiscountPrice { get; set; }
+
+        // 💰 Calculated
+        public decimal totalprice { get; set; }
+
+        // 📅 Meta
+        public DateTime? createdat { get; set; }
+    }
+
+    public class AddToCartRequest
+    {
+        public int ProductId { get; set; }
+    }
+
+
 
 
 
