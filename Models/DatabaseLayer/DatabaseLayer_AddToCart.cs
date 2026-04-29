@@ -1,4 +1,5 @@
-﻿using Npgsql;
+﻿using Microsoft.AspNetCore.Mvc;
+using Npgsql;
 
 namespace firstproject.Models.DatabaseLayer
 {
@@ -7,6 +8,8 @@ namespace firstproject.Models.DatabaseLayer
         Task<List<CartItemModel>> GetCart(int? userId, string? ipAddress);
         Task<string> AddToCart(int? userId, string ipAddress, int productId);
         Task MergeGuestCart(int userId, string ipAddress);
+
+        Task<IActionResult> DeleteCartItem(int id);
     }
 
     public partial class DatabaseLayer : IDatabaseLayer
@@ -131,6 +134,24 @@ namespace firstproject.Models.DatabaseLayer
                     command.Parameters.AddWithValue("@UserId", userId);
                     command.Parameters.AddWithValue("@IpAddress", ipAddress);
                     await command.ExecuteNonQueryAsync();
+                }
+            }
+        }
+
+
+        public async Task<IActionResult> DeleteCartItem(int id)
+        {
+            using (var connection = new NpgsqlConnection(this.DbConnection))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand("DELETE FROM addtocart WHERE id = @Id", connection))
+                {
+                    command.Parameters.AddWithValue("@Id", id);
+                    int rowsAffected = await command.ExecuteNonQueryAsync();
+                    if (rowsAffected > 0)
+                        return new OkObjectResult(new { status = true, message = "Cart item deleted" });
+                    else
+                        return new NotFoundObjectResult(new { status = false, message = "Cart item not found" });
                 }
             }
         }

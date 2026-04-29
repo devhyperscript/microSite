@@ -75,5 +75,36 @@ namespace firstproject.Controllers
                 data = result
             });
         }
+
+
+        [HttpDelete("delete/{id}")]
+
+        //public async Task<IActionResult> DeleteCartItem(int id)
+        //{
+        //    int? userId = GetUserIdFromToken();
+        //    string ipAddress = GetClientIp();
+        //    var result = await _businessLayer.DeleteCartItem(int, id);
+        //    return Ok(new
+        //    {
+        //        status = true,
+        //        message = "Cart item delete ho gaya",
+        //        deletedBy = userId.HasValue ? $"userId: {userId}" : $"ip: {ipAddress}",
+        //        data = result
+        //    });
+        //}
+
+        public async Task<IActionResult> DeleteCartItem(int id)
+        {
+            var result = await _businessLayer.DeleteCartItem(id);
+            return Ok(
+                new
+                {
+                    status = true,
+                    message = "Cart delete successful",
+                    data = result
+                }
+
+                );
+        }
     }
 }

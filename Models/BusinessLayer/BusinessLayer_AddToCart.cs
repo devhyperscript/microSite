@@ -8,6 +8,8 @@ namespace firstproject.Models.BusinessLayer
         Task<List<CartItemModel>> GetCart(int? userId, string ipAddress);
         Task<string> AddToCart(int? userId, string ipAddress, int productId);
         Task MergeGuestCart(int userId, string ipAddress);
+
+        Task<IActionResult> DeleteCartItem(int id);
     }
 
     public partial class BusinessLayer : IBusinessLayer
@@ -33,6 +35,11 @@ namespace firstproject.Models.BusinessLayer
         public async Task MergeGuestCart(int userId, string ipAddress)
         {
             await _databaseLayer.MergeGuestCart(userId, ipAddress);
+        }
+
+        public async Task<IActionResult> DeleteCartItem(int id)
+        {
+            return await _databaseLayer.DeleteCartItem(id);
         }
     }
 }
