@@ -20,11 +20,11 @@ namespace firstproject.Helpers
         {
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, admin.Id.ToString()),
-                new Claim(ClaimTypes.Email, admin.Email),
-                new Claim(ClaimTypes.GivenName, admin.FirstName),
-                new Claim(ClaimTypes.Surname, admin.LastName),
-                new Claim(ClaimTypes.Role, "Admin")
+                new Claim("id", admin.Id.ToString()),
+                new Claim("email", admin.Email),
+                new Claim("firstname", admin.FirstName),
+                new Claim("lastname", admin.LastName),
+                new Claim("role", "Admin")
             };
 
             return BuildToken(claims);
@@ -35,12 +35,12 @@ namespace firstproject.Helpers
         {
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-                new Claim(ClaimTypes.GivenName, user.Firstname ?? string.Empty),
-                new Claim(ClaimTypes.Surname, user.Lastname ?? string.Empty),
-                new Claim(ClaimTypes.Role, user.Role ?? "User")
-            };
+        new Claim("id", user.Id.ToString()),
+        new Claim("email", user.Email ?? string.Empty),
+        new Claim("firstname", user.Firstname ?? string.Empty),
+        new Claim("lastname", user.Lastname ?? string.Empty),
+        new Claim("role", user.Role ?? "User")
+         };
 
             return BuildToken(claims);
         }
