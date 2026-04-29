@@ -10,6 +10,8 @@ namespace firstproject.Models.DatabaseLayer
         Task MergeGuestCart(int userId, string ipAddress);
 
         Task<IActionResult> DeleteCartItem(int id);
+
+        Task<IActionResult> ClearCart(int userId);
     }
 
     public partial class DatabaseLayer : IDatabaseLayer
@@ -152,6 +154,22 @@ namespace firstproject.Models.DatabaseLayer
                         return new OkObjectResult(new { status = true, message = "Cart item deleted" });
                     else
                         return new NotFoundObjectResult(new { status = false, message = "Cart item not found" });
+                }
+            }
+        }
+
+
+
+        public async Task<IActionResult> ClearCart(int userId)
+        {
+            using (var connection = new NpgsqlConnection(this.DbConnection))
+            {
+                await connection.OpenAsync();
+                using (var command = new NpgsqlCommand("DELETE FROM addtocart WHERE userid = @UserId", connection))
+                {
+                    command.Parameters.AddWithValue("@UserId", userId);
+                    int rowsAffected = await command.ExecuteNonQueryAsync();
+                    return new OkObjectResult(new { status = true, message = $"{rowsAffected} cart items cleared" });
                 }
             }
         }

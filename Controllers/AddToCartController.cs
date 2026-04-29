@@ -79,19 +79,7 @@ namespace firstproject.Controllers
 
         [HttpDelete("delete/{id}")]
 
-        //public async Task<IActionResult> DeleteCartItem(int id)
-        //{
-        //    int? userId = GetUserIdFromToken();
-        //    string ipAddress = GetClientIp();
-        //    var result = await _businessLayer.DeleteCartItem(int, id);
-        //    return Ok(new
-        //    {
-        //        status = true,
-        //        message = "Cart item delete ho gaya",
-        //        deletedBy = userId.HasValue ? $"userId: {userId}" : $"ip: {ipAddress}",
-        //        data = result
-        //    });
-        //}
+
 
         public async Task<IActionResult> DeleteCartItem(int id)
         {
@@ -105,6 +93,24 @@ namespace firstproject.Controllers
                 }
 
                 );
+        }
+
+
+        [HttpDelete("clearcart/{userId}")]
+
+
+        public async Task<IActionResult> ClearCart(int userId)
+        {
+            var result = await _businessLayer.ClearCart(userId);
+            return Ok(
+                new
+                {
+                    status = true,
+                    message = "Cart clear successful",
+                    data = result
+                }
+                );
+
         }
     }
 }
