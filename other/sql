@@ -192,3 +192,17 @@ CREATE TABLE customerlogo (
     status BOOLEAN DEFAULT TRUE,
     createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE addtocart (
+    id SERIAL PRIMARY KEY,
+    userid INT NOT NULL,
+    productid INT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    price NUMERIC(10,2) NOT NULL,
+    totalprice NUMERIC(10,2) GENERATED ALWAYS AS (quantity * price) STORED,
+    createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+
+    -- Important: same product ek user ke liye sirf ek baar
+    UNIQUE(userid, productid)
+);
