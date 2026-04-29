@@ -31,6 +31,8 @@ namespace firstproject.Models.DatabaseLayer
             v.sizeid,
             v.colorid,
             v.price,
+            v.discountprice,
+
             v.stock,
             v.sku,
             v.image,
@@ -78,6 +80,9 @@ namespace firstproject.Models.DatabaseLayer
                             : reader.GetFieldValue<string[]>(reader.GetOrdinal("colorname")),
 
                         Price = reader.GetDecimal(reader.GetOrdinal("price")),
+                        DiscountPrice = reader.IsDBNull(reader.GetOrdinal("discountprice"))
+                            ? (decimal?)null
+                            : reader.GetDecimal(reader.GetOrdinal("discountprice")),
                         Stock = reader.GetInt32(reader.GetOrdinal("stock")),
 
                         Sku = reader.IsDBNull(reader.GetOrdinal("sku"))
@@ -108,7 +113,7 @@ namespace firstproject.Models.DatabaseLayer
             using (var connection = new NpgsqlConnection(DbConnection))
             {
                 await connection.OpenAsync();
-                var command = new NpgsqlCommand("INSERT INTO variant (productid, variantname, sizeid, colorid, price, stock, sku, image,imagegallery ,isactive ) VALUES (@productid, @variantname, @sizeid, @colorid, @price, @stock, @sku, @image,@imagegallery, @isactive )RETURNING id, createdat", connection);
+                var command = new NpgsqlCommand("INSERT INTO variant (productid, variantname, sizeid, colorid, price, discountprice, stock, sku, image,imagegallery ,isactive ) VALUES (@productid, @variantname, @sizeid, @colorid, @price, @discountprice, @stock, @sku, @image,@imagegallery, @isactive )RETURNING id, createdat", connection);
                 command.Parameters.AddWithValue("@productid", variant.ProductId);
                 command.Parameters.AddWithValue("@variantname", (object)variant.VariantName ?? DBNull.Value);
                 command.Parameters.Add(new NpgsqlParameter("@sizeid",
@@ -124,6 +129,7 @@ namespace firstproject.Models.DatabaseLayer
                 });
 
                 command.Parameters.AddWithValue("@price", variant.Price);
+                command.Parameters.AddWithValue("@discountprice", (object)variant.DiscountPrice ?? DBNull.Value);
                 command.Parameters.AddWithValue("@stock", variant.Stock);
                 command.Parameters.AddWithValue("@sku", (object)variant.Sku ?? DBNull.Value);
                 command.Parameters.AddWithValue("@image", (object)variant.Image ?? DBNull.Value);
@@ -150,7 +156,7 @@ namespace firstproject.Models.DatabaseLayer
             using (var connection = new NpgsqlConnection(DbConnection))
             {
                 await connection.OpenAsync();
-                var command = new NpgsqlCommand("UPDATE variant SET productid=@productid, variantname=@variantname, sizeid=@sizeid, colorid=@colorid, price=@price, stock=@stock, sku=@sku, image=@image,imagegallery=@imagegallery ,isactive=@isactive  WHERE id = @id", connection);
+                var command = new NpgsqlCommand("UPDATE variant SET productid=@productid, variantname=@variantname, sizeid=@sizeid, colorid=@colorid, price=@price, discountprice=@discountprice, stock=@stock, sku=@sku, image=@image,imagegallery=@imagegallery ,isactive=@isactive  WHERE id = @id", connection);
                 command.Parameters.AddWithValue("@id", id);
                 command.Parameters.AddWithValue("@productid", variant.ProductId);
                 command.Parameters.AddWithValue("@variantname", (object)variant.VariantName ?? DBNull.Value);
@@ -165,6 +171,7 @@ namespace firstproject.Models.DatabaseLayer
                     Value = variant.ColorId ?? Array.Empty<int>()
                 });
                 command.Parameters.AddWithValue("@price", variant.Price);
+                command.Parameters.AddWithValue("@discountprice", (object)variant.DiscountPrice ?? DBNull.Value);
                 command.Parameters.AddWithValue("@stock", variant.Stock);
                 command.Parameters.AddWithValue("@sku", (object)variant.Sku ?? DBNull.Value);
                 command.Parameters.AddWithValue("@image", (object)variant.Image ?? DBNull.Value);
@@ -206,6 +213,9 @@ namespace firstproject.Models.DatabaseLayer
                             ? null
                             : reader.GetFieldValue<int[]>(reader.GetOrdinal("colorid")),
                         Price = reader.GetDecimal(reader.GetOrdinal("price")),
+                        DiscountPrice = reader.IsDBNull(reader.GetOrdinal("discountprice"))
+                            ? (decimal?)null
+                            : reader.GetDecimal(reader.GetOrdinal("discountprice")),
                         Stock = reader.GetInt32(reader.GetOrdinal("stock")),
                         Sku = reader.IsDBNull(reader.GetOrdinal("sku"))
                             ? null
