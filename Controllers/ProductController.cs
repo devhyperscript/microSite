@@ -225,5 +225,15 @@ namespace firstproject.Controllers
             return Ok(result);
         }
 
+
+        [HttpGet("getproductbyid/{id}")]
+        public async Task<IActionResult> GetProductById(int id)
+        {
+            var product = await _businessLayer.GetProductById(id);
+            if (product == null)
+                return NotFound(new { status = false, message = "Product not found" });
+
+            return Ok(new { status = true, data = product });
+        }
     }
 }
