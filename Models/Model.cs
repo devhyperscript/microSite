@@ -246,6 +246,7 @@ namespace firstproject.Models
         // 💰 Calculated
         public decimal totalprice { get; set; }
 
+
         // 📅 Meta
         public DateTime? createdat { get; set; }
     }
@@ -256,7 +257,21 @@ namespace firstproject.Models
         public string? ipaddress { get; set; }
     }
 
+  
 
+    public class CheckoutRequestModel
+    {
+        public string FirstName { get; set; } = "";
+        public string LastName { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Mobile { get; set; } = "";
+        public string Pincode { get; set; } = "";
+        public string Address { get; set; } = "";
+        public string City { get; set; } = "";
+        public string State { get; set; } = "";
+        public string Country { get; set; } = "India";
+        public string PaymentMethod { get; set; } = "COD";
+    }
 
 
 
