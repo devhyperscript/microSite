@@ -1,5 +1,4 @@
 ﻿using firstproject.Helpers;
-using firstproject.Models;
 using firstproject.Models.BusinessLayer;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,99 +17,131 @@ namespace firstproject.Controllers
             _jwtHelper = jwtHelper;
         }
 
-        // ✅ Helper: Request se IP address nikalo (dynamic system IP)
-        private string GetClientIp()
+        // ✅ Dynamic IP Address (REAL)
+        private string GetClientIpAddress()
         {
-            // X-Forwarded-For header check karo (proxy/load balancer ke peeche)
-            var forwarded = Request.Headers["X-Forwarded-For"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(forwarded))
-                return forwarded.Split(',')[0].Trim();
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
 
-            // Direct connection IP
-            return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            if (Request.Headers.ContainsKey("X-Forwarded-For"))
+            {
+                ip = Request.Headers["X-Forwarded-For"].FirstOrDefault();
+            }
+
+            return ip ?? "0.0.0.0";
         }
 
-        // ✅ Helper: Token se userId nikalo (null if not logged in)
+        // ✅ JWT se userId nikalo
         private int? GetUserIdFromToken()
         {
             var authHeader = Request.Headers["Authorization"].FirstOrDefault();
             if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 return null;
 
-            var token = authHeader.Substring("Bearer ".Length).Trim();
-            return _jwtHelper.GetUserIdFromToken(token); // returns null if invalid
+            return _jwtHelper.GetUserIdFromToken(
+                authHeader.Substring("Bearer ".Length).Trim()
+            );
         }
 
-        // POST api/cart/add
+        // =========================
+        // ✅ ADD TO CART
+        // =========================
         [HttpPost("add")]
         public async Task<IActionResult> AddToCart([FromForm] int productId)
         {
             int? userId = GetUserIdFromToken();
-            string ipAddress = GetClientIp();
+            string ipAddress = GetClientIpAddress();
 
             var result = await _businessLayer.AddToCart(userId, ipAddress, productId);
+
+            if (result == "AlreadyInCart")
+                return Ok(new { status = false, message = "Product already cart mein hai" });
+
+            var items = await _businessLayer.GetCart(userId, ipAddress);
+            decimal grandTotal = items.Sum(x => x.totalprice);
 
             return Ok(new
             {
                 status = true,
                 message = "Product cart mein add ho gaya",
-                addedBy = userId.HasValue ? $"userId: {userId}" : $"ip: {ipAddress}",
-                data = result
+                userId = userId,
+                ipAddress = userId == null ? ipAddress : null,
+                totalItems = items.Count,
+                grandTotal = grandTotal,
+                data = items
             });
         }
 
-        // GET api/cart/get
+        // =========================
+        // ✅ GET CART
+        // =========================
         [HttpGet("get")]
         public async Task<IActionResult> GetCart()
         {
             int? userId = GetUserIdFromToken();
-            string ipAddress = GetClientIp();
+            string ipAddress = GetClientIpAddress();
 
-            var result = await _businessLayer.GetCart(userId, ipAddress);
+            var items = await _businessLayer.GetCart(userId, ipAddress);
+            decimal grandTotal = items.Sum(x => x.totalprice);
 
             return Ok(new
             {
                 status = true,
-                fetchedBy = userId.HasValue ? $"userId: {userId}" : $"ip: {ipAddress}",
-                data = result
+                userId = userId,
+                ipAddress = userId == null ? ipAddress : null,
+                totalItems = items.Count,
+                grandTotal = grandTotal,
+                data = items
             });
         }
 
-
-        [HttpDelete("delete/{id}")]
-
-
-
-        public async Task<IActionResult> DeleteCartItem(int id)
+        // =========================
+        // ✅ UPDATE QUANTITY
+        // =========================
+        [HttpPut("updatequantity")]
+        public async Task<IActionResult> UpdateQuantity([FromForm] int productId, [FromForm] int change)
         {
-            var result = await _businessLayer.DeleteCartItem(id);
-            return Ok(
-                new
-                {
-                    status = true,
-                    message = "Cart delete successful",
-                    data = result
-                }
+            if (change != 1 && change != -1)
+                return BadRequest(new { status = false, message = "change sirf +1 ya -1 hona chahiye" });
 
-                );
+            int? userId = GetUserIdFromToken();
+            string ipAddress = GetClientIpAddress();
+
+            await _businessLayer.UpdateCartQuantity(userId, ipAddress, productId, change);
+
+            var items = await _businessLayer.GetCart(userId, ipAddress);
+            decimal grandTotal = items.Sum(x => x.totalprice);
+
+            return Ok(new
+            {
+                status = true,
+                message = change == 1 ? "Quantity badh gayi (+1)" : "Quantity kam ho gayi (-1)",
+                userId = userId,
+                ipAddress = userId == null ? ipAddress : null,
+                totalItems = items.Count,
+                grandTotal = grandTotal,
+                data = items
+            });
         }
 
-
-        [HttpDelete("clearcart/{userId}")]
-
-
-        public async Task<IActionResult> ClearCart(int userId)
+        // =========================
+        // ✅ DELETE ITEM
+        // =========================
+        [HttpDelete("delete/{id}")]
+        public async Task<IActionResult> DeleteCartItem(int id)
         {
-            var result = await _businessLayer.ClearCart(userId);
-            return Ok(
-                new
-                {
-                    status = true,
-                    message = "Cart clear successful",
-                    data = result
-                }
-                );
+            return await _businessLayer.DeleteCartItem(id);
+        }
 
+        // =========================
+        // ✅ CLEAR CART
+        // =========================
+        [HttpDelete("clearcart")]
+        public async Task<IActionResult> ClearCart()
+        {
+            int? userId = GetUserIdFromToken();
+            string ipAddress = GetClientIpAddress();
+
+            return await _businessLayer.ClearCart(userId, ipAddress);
         }
     }
 }

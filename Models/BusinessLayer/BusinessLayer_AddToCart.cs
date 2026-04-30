@@ -5,46 +5,81 @@ namespace firstproject.Models.BusinessLayer
 {
     public partial interface IBusinessLayer
     {
-        Task<List<CartItemModel>> GetCart(int? userId, string ipAddress);
-        Task<string> AddToCart(int? userId, string ipAddress, int productId);
+        Task<List<CartItemModel>> GetCart(int? userId, string? ipAddress);
+        Task<string> AddToCart(int? userId, string? ipAddress, int productId);
+        Task<string> UpdateCartQuantity(int? userId, string? ipAddress, int productId, int change);
         Task MergeGuestCart(int userId, string ipAddress);
-
         Task<IActionResult> DeleteCartItem(int id);
-        Task<IActionResult> ClearCart(int userId);
+        Task<IActionResult> ClearCart(int? userId, string? ipAddress);
     }
 
     public partial class BusinessLayer : IBusinessLayer
     {
-        // ✅ Login hai → userId se cart fetch karo
-        // ✅ Guest hai → IP address se cart fetch karo
-        public async Task<List<CartItemModel>> GetCart(int? userId, string ipAddress)
+
+        // =========================
+        // ✅ GET CART
+        // =========================
+        public async Task<List<CartItemModel>> GetCart(int? userId, string? ipAddress)
         {
             if (userId.HasValue)
-                return await _databaseLayer.GetCart(userId.Value, null);       // userId se
+            {
+                // 🔥 Merge only if IP exists
+                if (!string.IsNullOrEmpty(ipAddress))
+                    await MergeGuestCart(userId.Value, ipAddress);
+
+                return await _databaseLayer.GetCart(userId.Value, null);
+            }
             else
-                return await _databaseLayer.GetCart(null, ipAddress);          // IP se
+            {
+                // Guest user → IP se fetch
+                if (string.IsNullOrEmpty(ipAddress))
+                    return new List<CartItemModel>();
+
+                return await _databaseLayer.GetCart(null, ipAddress);
+            }
         }
 
-        // ✅ Login hai → userId se add karo
-        // ✅ Guest hai → IP address se add karo
-        public async Task<string> AddToCart(int? userId, string ipAddress, int productId)
+        // =========================
+        // ✅ ADD TO CART
+        // =========================
+        public async Task<string> AddToCart(int? userId, string? ipAddress, int productId)
         {
             return await _databaseLayer.AddToCart(userId, ipAddress, productId);
         }
 
-        // ✅ Login ke baad guest cart → user cart mein merge karo
+        // =========================
+        // ✅ UPDATE QUANTITY
+        // =========================
+        public async Task<string> UpdateCartQuantity(int? userId, string? ipAddress, int productId, int change)
+        {
+            return await _databaseLayer.UpdateCartQuantity(userId, ipAddress, productId, change);
+        }
+
+        // =========================
+        // ✅ MERGE GUEST CART → USER
+        // =========================
         public async Task MergeGuestCart(int userId, string ipAddress)
         {
+            if (string.IsNullOrEmpty(ipAddress))
+                return;
+
             await _databaseLayer.MergeGuestCart(userId, ipAddress);
         }
 
+        // =========================
+        // ✅ DELETE ITEM
+        // =========================
         public async Task<IActionResult> DeleteCartItem(int id)
         {
             return await _databaseLayer.DeleteCartItem(id);
         }
-        public async Task<IActionResult> ClearCart(int userId)
+
+        // =========================
+        // ✅ CLEAR CART
+        // =========================
+        public async Task<IActionResult> ClearCart(int? userId, string? ipAddress)
         {
-            return await _databaseLayer.ClearCart(userId);
+            return await _databaseLayer.ClearCart(userId, ipAddress);
         }
     }
 }

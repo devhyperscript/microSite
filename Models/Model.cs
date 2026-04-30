@@ -253,6 +253,7 @@ namespace firstproject.Models
     public class AddToCartRequest
     {
         public int ProductId { get; set; }
+        public string? ipaddress { get; set; }
     }
 
 
