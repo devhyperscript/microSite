@@ -18,7 +18,6 @@ namespace firstproject.Controllers
             _jwtHelper = jwtHelper;
         }
 
-        // POST api/admin/login ok
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromForm] AdminLoginModel model)
         {
@@ -53,9 +52,11 @@ namespace firstproject.Controllers
                 });
             }
 
-            // ✅ Token generate karo aur AdminModel ke Token field mein set karo
             admin.Token = _jwtHelper.GenerateToken(admin);
-            admin.PasswordHash = null; // ✅ Password response mein mat bhejo
+            admin.PasswordHash = null;
+
+            var clientIp = ClientIpHelper.GetClientIp(HttpContext);
+            await _businessLayer.MergeGuestCartToUserAsync(clientIp, admin.Id);
 
             return Ok(new
             {
@@ -63,24 +64,17 @@ namespace firstproject.Controllers
                 message = "Login successful",
                 data = new
                 {
-                    //id = admin.Id,
-                    //firstName = admin.FirstName,
-                    //lastName = admin.LastName,
-                    //phone = admin.Phone,
-                    //email = admin.Email,
-                    token = admin.Token,      // ✅ Sirf login mein token aayega
-                  
+                    id = admin.Id,
+                    token = admin.Token,
                 }
             });
         }
 
-        // GET api/admin/get
         [HttpGet("get")]
         public async Task<IActionResult> Get()
         {
             var result = await _businessLayer.GetAllAdmins();
 
-            // ✅ PasswordHash aur Token dono exclude karo
             var safeResult = result.Select(admin => new
             {
                 id = admin.Id,
@@ -89,20 +83,16 @@ namespace firstproject.Controllers
                 phone = admin.Phone,
                 email = admin.Email,
                 createdAt = admin.CreatedAt
-                // PasswordHash ❌ nahi
-                // Token ❌ nahi
             });
 
             return Ok(safeResult);
         }
 
-        // POST api/admin/add
         [HttpPost("add")]
         public async Task<IActionResult> Add([FromForm] AdminModel model)
         {
             var result = await _businessLayer.Add(model);
 
-            // ✅ Sirf safe fields return karo
             return Ok(new
             {
                 status = true,
@@ -119,7 +109,6 @@ namespace firstproject.Controllers
             });
         }
 
-        // PUT api/admin/edit/{id}
         [HttpPut("edit/{id}")]
         public async Task<IActionResult> Edit(int id, [FromForm] AdminModel model)
         {
@@ -128,7 +117,6 @@ namespace firstproject.Controllers
             if (result == null)
                 return NotFound(new { status = false, message = "Record not found" });
 
-            // ✅ Sirf safe fields return karo
             return Ok(new
             {
                 status = true,
@@ -141,13 +129,10 @@ namespace firstproject.Controllers
                     phone = result.Phone,
                     email = result.Email,
                     createdAt = result.CreatedAt
-                    // PasswordHash ❌ nahi
-                    // Token ❌ nahi
                 }
             });
         }
 
-        // DELETE api/admin/delete/{id}
         [HttpDelete("delete/{id}")]
         public async Task<IActionResult> Delete(int id)
         {

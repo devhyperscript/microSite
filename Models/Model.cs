@@ -1,6 +1,5 @@
 ﻿
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.Blazor;
+using Microsoft.AspNetCore.Http;
 
 namespace firstproject.Models
 
@@ -256,11 +255,15 @@ namespace firstproject.Models
         public string? ipaddress { get; set; }
     }
 
-
-
-
-
-
-
-
+    /// <summary>Raw row for <c>cart_items</c> (IP-based guest or logged-in user id).</summary>
+    public class CartItem
+    {
+        public int Id { get; set; }
+        public int ProductId { get; set; }
+        public int Quantity { get; set; }
+        public string? ClientIp { get; set; }
+        public int? UserId { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
 }
