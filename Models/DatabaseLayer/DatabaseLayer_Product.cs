@@ -285,6 +285,66 @@ shortdescription = @shortdescription,
 
 
         // Implementation
+        //public async Task<Productmodel?> GetProductById(int id)
+        //{
+        //    using (var connection = new NpgsqlConnection(this.DbConnection))
+        //    {
+        //        await connection.OpenAsync();
+
+        //        using (var command = new NpgsqlCommand(@"
+        //    SELECT id, productname, slug, sku, shortdescription, description, price, discountprice, stock,
+        //           categoryid, subcategoryid, childcategoryid,
+        //           brandid, sizeids, colorids,
+        //           image, imagegallery, isactive, createdat
+        //    FROM product WHERE id = @id", connection))
+        //        {
+        //            command.Parameters.AddWithValue("@id", id);
+
+        //            using (var reader = await command.ExecuteReaderAsync())
+        //            {
+        //                if (await reader.ReadAsync())
+        //                {
+        //                    return new Productmodel
+        //                    {
+        //                        Id = reader.GetInt32(reader.GetOrdinal("id")),
+        //                        ProductName = reader["productname"]?.ToString(),
+        //                        Slug = reader.IsDBNull(reader.GetOrdinal("slug"))
+        //                                        ? null : reader["slug"].ToString(),
+        //                        Sku = reader.IsDBNull(reader.GetOrdinal("sku")) 
+        //                                        ? null : reader["sku"].ToString(),
+        //                        ShortDescription = reader.IsDBNull(reader.GetOrdinal("shortdescription"))
+        //                                        ? null : reader["shortdescription"].ToString(),
+        //                        Description = reader.IsDBNull(reader.GetOrdinal("description"))
+        //                                        ? null : reader["description"].ToString(),
+        //                        Price = reader.GetDecimal(reader.GetOrdinal("price")),
+        //                        DiscountPrice = reader.IsDBNull(reader.GetOrdinal("discountprice"))
+        //                                        ? null : reader.GetDecimal(reader.GetOrdinal("discountprice")),
+        //                        Stock = reader.GetInt32(reader.GetOrdinal("stock")),
+        //                        CategoryId = reader.GetInt32(reader.GetOrdinal("categoryid")),
+        //                        SubCategoryId = reader.GetInt32(reader.GetOrdinal("subcategoryid")),
+        //                        ChildCategoryId = reader.IsDBNull(reader.GetOrdinal("childcategoryid"))
+        //                                        ? null : reader.GetInt32(reader.GetOrdinal("childcategoryid")),
+        //                        BrandId = reader.IsDBNull(reader.GetOrdinal("brandid"))
+        //                                        ? null : reader.GetInt32(reader.GetOrdinal("brandid")),
+        //                        SizeIds = reader.IsDBNull(reader.GetOrdinal("sizeids"))
+        //                                        ? null : (int[])reader["sizeids"],
+        //                        ColorIds = reader.IsDBNull(reader.GetOrdinal("colorids"))
+        //                                        ? null : (int[])reader["colorids"],
+        //                        Image = reader.IsDBNull(reader.GetOrdinal("image"))
+        //                                        ? null : reader["image"].ToString(),
+        //                        ImageGallery = reader.IsDBNull(reader.GetOrdinal("imagegallery"))
+        //                                        ? null : (string[])reader["imagegallery"],
+        //                        IsActive = reader.GetBoolean(reader.GetOrdinal("isactive")),
+        //                        CreatedAt = reader.GetDateTime(reader.GetOrdinal("createdat"))
+        //                    };
+        //                }
+        //            }
+        //        }
+        //    }
+        //    return null;
+        //}
+
+
         public async Task<Productmodel?> GetProductById(int id)
         {
             using (var connection = new NpgsqlConnection(this.DbConnection))
@@ -292,11 +352,55 @@ shortdescription = @shortdescription,
                 await connection.OpenAsync();
 
                 using (var command = new NpgsqlCommand(@"
-            SELECT id, productname, slug, sku, shortdescription, description, price, discountprice, stock,
-                   categoryid, subcategoryid, childcategoryid,
-                   brandid, sizeids, colorids,
-                   image, imagegallery, isactive, createdat
-            FROM product WHERE id = @id", connection))
+        SELECT 
+            p.id,
+            p.productname,
+            p.slug,
+            p.sku,
+            p.shortdescription,
+            p.description,
+            p.price,
+            p.discountprice,
+            p.stock,
+            p.categoryid,
+            p.subcategoryid,
+            p.childcategoryid,
+            p.brandid,
+            p.sizeids,
+            p.colorids,
+            p.image,
+            p.imagegallery,
+            p.isactive,
+            p.createdat,
+
+            -- ✅ Names
+            c.""Name""              AS categoryname,
+            sc.""SubCategoryName"" AS subcategoryname,
+            cc.""ChildCategoryName"" AS childcategoryname,
+            b.brandname            AS brandname,
+
+            -- ✅ Size names
+            ARRAY(
+                SELECT s.size_name 
+                FROM sizes s 
+                WHERE s.id = ANY(p.sizeids)
+            ) AS sizenames,
+
+            -- ✅ Color names
+            ARRAY(
+                SELECT col.colorname 
+                FROM color col 
+                WHERE col.id = ANY(p.colorids)
+            ) AS colornames
+
+        FROM product p
+        LEFT JOIN category c       ON p.categoryid = c.""Id""
+        LEFT JOIN subcategory sc   ON p.subcategoryid = sc.""Id""
+        LEFT JOIN childcategory cc ON p.childcategoryid = cc.""Id""
+        LEFT JOIN brand b          ON p.brandid = b.id
+
+        WHERE p.id = @id
+        ", connection))
                 {
                     command.Parameters.AddWithValue("@id", id);
 
@@ -308,34 +412,48 @@ shortdescription = @shortdescription,
                             {
                                 Id = reader.GetInt32(reader.GetOrdinal("id")),
                                 ProductName = reader["productname"]?.ToString(),
-                                Slug = reader.IsDBNull(reader.GetOrdinal("slug"))
-                                                ? null : reader["slug"].ToString(),
-                                Sku = reader.IsDBNull(reader.GetOrdinal("sku")) 
-                                                ? null : reader["sku"].ToString(),
-                                ShortDescription = reader.IsDBNull(reader.GetOrdinal("shortdescription"))
-                                                ? null : reader["shortdescription"].ToString(),
-                                Description = reader.IsDBNull(reader.GetOrdinal("description"))
-                                                ? null : reader["description"].ToString(),
+                                Slug = reader["slug"]?.ToString(),
+                                Sku = reader["sku"]?.ToString(),
+                                ShortDescription = reader["shortdescription"]?.ToString(),
+                                Description = reader["description"]?.ToString(),
                                 Price = reader.GetDecimal(reader.GetOrdinal("price")),
                                 DiscountPrice = reader.IsDBNull(reader.GetOrdinal("discountprice"))
-                                                ? null : reader.GetDecimal(reader.GetOrdinal("discountprice")),
+                                    ? null : reader.GetDecimal(reader.GetOrdinal("discountprice")),
                                 Stock = reader.GetInt32(reader.GetOrdinal("stock")),
+
                                 CategoryId = reader.GetInt32(reader.GetOrdinal("categoryid")),
                                 SubCategoryId = reader.GetInt32(reader.GetOrdinal("subcategoryid")),
                                 ChildCategoryId = reader.IsDBNull(reader.GetOrdinal("childcategoryid"))
-                                                ? null : reader.GetInt32(reader.GetOrdinal("childcategoryid")),
+                                    ? null : reader.GetInt32(reader.GetOrdinal("childcategoryid")),
                                 BrandId = reader.IsDBNull(reader.GetOrdinal("brandid"))
-                                                ? null : reader.GetInt32(reader.GetOrdinal("brandid")),
+                                    ? null : reader.GetInt32(reader.GetOrdinal("brandid")),
+
                                 SizeIds = reader.IsDBNull(reader.GetOrdinal("sizeids"))
-                                                ? null : (int[])reader["sizeids"],
+                                    ? null : (int[])reader["sizeids"],
                                 ColorIds = reader.IsDBNull(reader.GetOrdinal("colorids"))
-                                                ? null : (int[])reader["colorids"],
-                                Image = reader.IsDBNull(reader.GetOrdinal("image"))
-                                                ? null : reader["image"].ToString(),
+                                    ? null : (int[])reader["colorids"],
+
+                                Image = reader["image"]?.ToString(),
                                 ImageGallery = reader.IsDBNull(reader.GetOrdinal("imagegallery"))
-                                                ? null : (string[])reader["imagegallery"],
+                                    ? null : (string[])reader["imagegallery"],
+
                                 IsActive = reader.GetBoolean(reader.GetOrdinal("isactive")),
-                                CreatedAt = reader.GetDateTime(reader.GetOrdinal("createdat"))
+                                CreatedAt = reader.GetDateTime(reader.GetOrdinal("createdat")),
+
+                                // ✅ Names
+                                CategoryName = reader["categoryname"]?.ToString(),
+                                SubCategoryName = reader["subcategoryname"]?.ToString(),
+                                ChildCategoryName = reader["childcategoryname"]?.ToString(),
+                                BrandName = reader["brandname"]?.ToString(),
+
+                                // ✅ Size/Color names
+                                SizeNames = reader.IsDBNull(reader.GetOrdinal("sizenames"))
+                                    ? null
+                                    : ((string[])reader["sizenames"]).ToList(),
+
+                                ColorNames = reader.IsDBNull(reader.GetOrdinal("colornames"))
+                                    ? null
+                                    : ((string[])reader["colornames"]).ToList(),
                             };
                         }
                     }
@@ -343,7 +461,6 @@ shortdescription = @shortdescription,
             }
             return null;
         }
-
 
 
         public async Task<IActionResult> DeleteProduct(int id)
