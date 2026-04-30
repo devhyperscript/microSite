@@ -17,27 +17,20 @@ namespace firstproject.Controllers
             _jwtHelper = jwtHelper;
         }
 
-        private string GetGuestId()
+        // ✅ Dynamic IP Address (REAL)
+        private string GetClientIpAddress()
         {
-            if (Request.Cookies.TryGetValue("guest_id", out var existingId)
-                && !string.IsNullOrEmpty(existingId))
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            if (Request.Headers.ContainsKey("X-Forwarded-For"))
             {
-                return existingId;
+                ip = Request.Headers["X-Forwarded-For"].FirstOrDefault();
             }
 
-            var newGuestId = "guest_" + Guid.NewGuid().ToString("N");
-
-            Response.Cookies.Append("guest_id", newGuestId, new CookieOptions
-            {
-                HttpOnly = true,
-                Expires = DateTimeOffset.UtcNow.AddDays(30),
-                SameSite = SameSiteMode.Lax,
-                IsEssential = true
-            });
-
-            return newGuestId;
+            return ip ?? "0.0.0.0";
         }
 
+        // ✅ JWT se userId nikalo
         private int? GetUserIdFromToken()
         {
             var authHeader = Request.Headers["Authorization"].FirstOrDefault();
@@ -49,18 +42,21 @@ namespace firstproject.Controllers
             );
         }
 
+        // =========================
+        // ✅ ADD TO CART
+        // =========================
         [HttpPost("add")]
         public async Task<IActionResult> AddToCart([FromForm] int productId)
         {
             int? userId = GetUserIdFromToken();
-            string guestId = userId.HasValue ? "" : GetGuestId();
+            string ipAddress = GetClientIpAddress();
 
-            var result = await _businessLayer.AddToCart(userId, guestId, productId);
+            var result = await _businessLayer.AddToCart(userId, ipAddress, productId);
 
             if (result == "AlreadyInCart")
                 return Ok(new { status = false, message = "Product already cart mein hai" });
 
-            var items = await _businessLayer.GetCart(userId, guestId);
+            var items = await _businessLayer.GetCart(userId, ipAddress);
             decimal grandTotal = items.Sum(x => x.totalprice);
 
             return Ok(new
@@ -68,33 +64,39 @@ namespace firstproject.Controllers
                 status = true,
                 message = "Product cart mein add ho gaya",
                 userId = userId,
-                guestId = userId == null ? guestId : null,
+                ipAddress = userId == null ? ipAddress : null,
                 totalItems = items.Count,
                 grandTotal = grandTotal,
                 data = items
             });
         }
 
+        // =========================
+        // ✅ GET CART
+        // =========================
         [HttpGet("get")]
         public async Task<IActionResult> GetCart()
         {
             int? userId = GetUserIdFromToken();
-            string guestId = userId.HasValue ? "" : GetGuestId();
+            string ipAddress = GetClientIpAddress();
 
-            var items = await _businessLayer.GetCart(userId, guestId);
+            var items = await _businessLayer.GetCart(userId, ipAddress);
             decimal grandTotal = items.Sum(x => x.totalprice);
 
             return Ok(new
             {
                 status = true,
                 userId = userId,
-                guestId = userId == null ? guestId : null,
+                ipAddress = userId == null ? ipAddress : null,
                 totalItems = items.Count,
                 grandTotal = grandTotal,
                 data = items
             });
         }
 
+        // =========================
+        // ✅ UPDATE QUANTITY
+        // =========================
         [HttpPut("updatequantity")]
         public async Task<IActionResult> UpdateQuantity([FromForm] int productId, [FromForm] int change)
         {
@@ -102,11 +104,11 @@ namespace firstproject.Controllers
                 return BadRequest(new { status = false, message = "change sirf +1 ya -1 hona chahiye" });
 
             int? userId = GetUserIdFromToken();
-            string guestId = userId.HasValue ? "" : GetGuestId();
+            string ipAddress = GetClientIpAddress();
 
-            await _businessLayer.UpdateCartQuantity(userId, guestId, productId, change);
+            await _businessLayer.UpdateCartQuantity(userId, ipAddress, productId, change);
 
-            var items = await _businessLayer.GetCart(userId, guestId);
+            var items = await _businessLayer.GetCart(userId, ipAddress);
             decimal grandTotal = items.Sum(x => x.totalprice);
 
             return Ok(new
@@ -114,26 +116,32 @@ namespace firstproject.Controllers
                 status = true,
                 message = change == 1 ? "Quantity badh gayi (+1)" : "Quantity kam ho gayi (-1)",
                 userId = userId,
-                guestId = userId == null ? guestId : null,
+                ipAddress = userId == null ? ipAddress : null,
                 totalItems = items.Count,
                 grandTotal = grandTotal,
                 data = items
             });
         }
 
+        // =========================
+        // ✅ DELETE ITEM
+        // =========================
         [HttpDelete("delete/{id}")]
         public async Task<IActionResult> DeleteCartItem(int id)
         {
             return await _businessLayer.DeleteCartItem(id);
         }
 
+        // =========================
+        // ✅ CLEAR CART
+        // =========================
         [HttpDelete("clearcart")]
         public async Task<IActionResult> ClearCart()
         {
             int? userId = GetUserIdFromToken();
-            string guestId = userId.HasValue ? "" : GetGuestId();
+            string ipAddress = GetClientIpAddress();
 
-            return await _businessLayer.ClearCart(userId, guestId);
+            return await _businessLayer.ClearCart(userId, ipAddress);
         }
     }
 }

@@ -5,60 +5,81 @@ namespace firstproject.Models.BusinessLayer
 {
     public partial interface IBusinessLayer
     {
-        Task<List<CartItemModel>> GetCart(int? userId, string? guestId);
-        Task<string> AddToCart(int? userId, string? guestId, int productId);
-        Task<string> UpdateCartQuantity(int? userId, string? guestId, int productId, int change);
-        Task MergeGuestCart(int userId, string guestId);
+        Task<List<CartItemModel>> GetCart(int? userId, string? ipAddress);
+        Task<string> AddToCart(int? userId, string? ipAddress, int productId);
+        Task<string> UpdateCartQuantity(int? userId, string? ipAddress, int productId, int change);
+        Task MergeGuestCart(int userId, string ipAddress);
         Task<IActionResult> DeleteCartItem(int id);
-        Task<IActionResult> ClearCart(int? userId, string? guestId);
+        Task<IActionResult> ClearCart(int? userId, string? ipAddress);
     }
 
     public partial class BusinessLayer : IBusinessLayer
     {
-        public async Task<List<CartItemModel>> GetCart(int? userId, string? guestId)
+
+        // =========================
+        // ✅ GET CART
+        // =========================
+        public async Task<List<CartItemModel>> GetCart(int? userId, string? ipAddress)
         {
             if (userId.HasValue)
             {
-                if (!string.IsNullOrEmpty(guestId))
-                    await MergeGuestCart(userId.Value, guestId);
+                // 🔥 Merge only if IP exists
+                if (!string.IsNullOrEmpty(ipAddress))
+                    await MergeGuestCart(userId.Value, ipAddress);
 
                 return await _databaseLayer.GetCart(userId.Value, null);
             }
             else
             {
-                if (string.IsNullOrEmpty(guestId))
+                // Guest user → IP se fetch
+                if (string.IsNullOrEmpty(ipAddress))
                     return new List<CartItemModel>();
 
-                return await _databaseLayer.GetCart(null, guestId);
+                return await _databaseLayer.GetCart(null, ipAddress);
             }
         }
 
-        public async Task<string> AddToCart(int? userId, string? guestId, int productId)
+        // =========================
+        // ✅ ADD TO CART
+        // =========================
+        public async Task<string> AddToCart(int? userId, string? ipAddress, int productId)
         {
-            return await _databaseLayer.AddToCart(userId, guestId, productId);
+            return await _databaseLayer.AddToCart(userId, ipAddress, productId);
         }
 
-        public async Task<string> UpdateCartQuantity(int? userId, string? guestId, int productId, int change)
+        // =========================
+        // ✅ UPDATE QUANTITY
+        // =========================
+        public async Task<string> UpdateCartQuantity(int? userId, string? ipAddress, int productId, int change)
         {
-            return await _databaseLayer.UpdateCartQuantity(userId, guestId, productId, change);
+            return await _databaseLayer.UpdateCartQuantity(userId, ipAddress, productId, change);
         }
 
-        public async Task MergeGuestCart(int userId, string guestId)
+        // =========================
+        // ✅ MERGE GUEST CART → USER
+        // =========================
+        public async Task MergeGuestCart(int userId, string ipAddress)
         {
-            if (string.IsNullOrEmpty(guestId))
+            if (string.IsNullOrEmpty(ipAddress))
                 return;
 
-            await _databaseLayer.MergeGuestCart(userId, guestId);
+            await _databaseLayer.MergeGuestCart(userId, ipAddress);
         }
 
+        // =========================
+        // ✅ DELETE ITEM
+        // =========================
         public async Task<IActionResult> DeleteCartItem(int id)
         {
             return await _databaseLayer.DeleteCartItem(id);
         }
 
-        public async Task<IActionResult> ClearCart(int? userId, string? guestId)
+        // =========================
+        // ✅ CLEAR CART
+        // =========================
+        public async Task<IActionResult> ClearCart(int? userId, string? ipAddress)
         {
-            return await _databaseLayer.ClearCart(userId, guestId);
+            return await _databaseLayer.ClearCart(userId, ipAddress);
         }
     }
 }

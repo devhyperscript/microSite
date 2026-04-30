@@ -1,5 +1,4 @@
-﻿using firstproject.Models;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 
 namespace firstproject.Models.DatabaseLayer
