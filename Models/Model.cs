@@ -273,6 +273,13 @@ namespace firstproject.Models
         public string PaymentMethod { get; set; } = "COD";
     }
 
+    public class CloudinarySettings
+    {
+        public string CloudName { get; set; }
+        public string ApiKey { get; set; }
+        public string ApiSecret { get; set; }
+    }
+
 
 
 
