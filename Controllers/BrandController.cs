@@ -64,6 +64,9 @@ namespace firstproject.Controllers
             }
             else
             {
+
+            }
+            {
                 model.BrandImage = existingBrand.BrandImage;
             }
 

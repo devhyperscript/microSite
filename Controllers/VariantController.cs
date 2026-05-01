@@ -1,5 +1,6 @@
 ﻿using firstproject.Models;
 using firstproject.Models.BusinessLayer;
+using firstproject.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,16 +8,15 @@ namespace firstproject.Controllers
 {
     [ApiController]
     [Route("api/variant")]
-    public class VariantController : Controller
+    public class VariantController : ControllerBase
     {
-
         private readonly IBusinessLayer _businessLayer;
-        private readonly IWebHostEnvironment _env;
+        private readonly CloudinaryService _cloudinary;
 
-        public VariantController(IBusinessLayer businessLayer, IWebHostEnvironment env)
+        public VariantController(IBusinessLayer businessLayer, CloudinaryService cloudinary)
         {
             _businessLayer = businessLayer;
-            _env = env;
+            _cloudinary = cloudinary;
         }
 
         [HttpGet("getvariant")]
@@ -26,52 +26,37 @@ namespace firstproject.Controllers
             return Ok(variants);
         }
 
+        // 🔥 ADD VARIANT
         [HttpPost("addvariant")]
         [Authorize]
         public async Task<IActionResult> AddVariant([FromForm] Variantmodel variant)
         {
             try
             {
-                var uploadPath = Path.Combine(_env.WebRootPath, "uploads");
-                if (!Directory.Exists(uploadPath))
-                    Directory.CreateDirectory(uploadPath);
-
-                // ===== Main Image =====
+                // ✅ Main Image
                 if (variant.ImageFile != null)
                 {
-                    var fileName = Guid.NewGuid() + Path.GetExtension(variant.ImageFile.FileName);
-                    var filePath = Path.Combine(uploadPath, fileName);
-
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await variant.ImageFile.CopyToAsync(stream);
-                    }
-
-                    variant.Image = "/uploads/" + fileName;
+                    var imageUrl = await _cloudinary.UploadImageAsync(variant.ImageFile);
+                    variant.Image = imageUrl;
                 }
 
-                // ===== Gallery Images =====
-                List<string> gallery = new List<string>();
-
-                if (variant.GalleryFiles != null)
+                // ✅ Gallery Images
+                if (variant.GalleryFiles != null && variant.GalleryFiles.Length > 0)
                 {
+                    var galleryList = new List<string>();
+
                     foreach (var file in variant.GalleryFiles)
                     {
-                        var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
-                        var filePath = Path.Combine(uploadPath, fileName);
-
-                        using (var stream = new FileStream(filePath, FileMode.Create))
+                        if (file != null)
                         {
-                            await file.CopyToAsync(stream);
+                            var imageUrl = await _cloudinary.UploadImageAsync(file);
+                            galleryList.Add(imageUrl);
                         }
-
-                        gallery.Add("/uploads/" + fileName);
                     }
+
+                    variant.ImageGallery = galleryList.ToArray();
                 }
 
-                variant.ImageGallery = gallery.ToArray();
-
-                // ===== Call Business Layer =====
                 var result = await _businessLayer.AddVariant(variant);
 
                 return Ok(new { message = "Variant added", data = result });
@@ -82,137 +67,67 @@ namespace firstproject.Controllers
             }
         }
 
-
+        // 🔥 UPDATE VARIANT
         [HttpPut("updatevariant/{id}")]
         [Authorize]
         public async Task<IActionResult> UpdateVariant(int id, [FromForm] Variantmodel variant)
         {
+            var existing = await _businessLayer.GetVariantById(id);
 
+            if (existing == null)
+                return NotFound(new { message = "Variant not found" });
 
-            string uploadsFolder = Path.Combine(_env.WebRootPath, "uploads");
-            Directory.CreateDirectory(uploadsFolder);
-
-            // ✅ Step 1: Pehle purani image paths DB se lo
-            var existingVariant = await _businessLayer.GetVariantById(id);
-
-            // ✅ Main image update
-            if (variant.ImageFile != null && variant.ImageFile.Length > 0)
+            // ✅ Main Image
+            if (variant.ImageFile != null)
             {
-                // ✅ Purani image delete karo
-                if (!string.IsNullOrEmpty(existingVariant?.Image))
-                {
-                    string oldFilePath = Path.Combine(_env.WebRootPath,
-                                         existingVariant.Image.TrimStart('/'));
-                    if (System.IO.File.Exists(oldFilePath))
-                        System.IO.File.Delete(oldFilePath);
-                }
-
-                // ✅ Nayi image save karo
-                string uniqueFileName = Guid.NewGuid().ToString()
-                                        + Path.GetExtension(variant.ImageFile.FileName);
-                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await variant.ImageFile.CopyToAsync(stream);
-                }
-
-                variant.Image = "/uploads/" + uniqueFileName;
+                var imageUrl = await _cloudinary.UploadImageAsync(variant.ImageFile);
+                variant.Image = imageUrl;
             }
             else
             {
-                // ✅ Nai image nahi aayi toh purani hi rakhni hai
-                variant.Image = existingVariant?.Image;
+                variant.Image = existing.Image;
             }
 
-            // ✅ Gallery images update
+            // ✅ Gallery Images
             if (variant.GalleryFiles != null && variant.GalleryFiles.Length > 0)
             {
-                // ✅ Purani gallery images delete karo
-                if (existingVariant?.ImageGallery != null)
-                {
-                    foreach (var oldImage in existingVariant.ImageGallery)
-                    {
-                        string oldFilePath = Path.Combine(_env.WebRootPath,
-                                             oldImage.TrimStart('/'));
-                        if (System.IO.File.Exists(oldFilePath))
-                            System.IO.File.Delete(oldFilePath);
-                    }
-                }
-
-                // ✅ Nayi gallery images save karo
-                var galleryPaths = new List<string>();
+                var galleryList = new List<string>();
 
                 foreach (var file in variant.GalleryFiles)
                 {
-                    if (file != null && file.Length > 0)
+                    if (file != null)
                     {
-                        string uniqueFileName = Guid.NewGuid().ToString()
-                                                + Path.GetExtension(file.FileName);
-                        string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-                        using (var stream = new FileStream(filePath, FileMode.Create))
-                        {
-                            await file.CopyToAsync(stream);
-                        }
-
-                        galleryPaths.Add("/uploads/" + uniqueFileName);
+                        var imageUrl = await _cloudinary.UploadImageAsync(file);
+                        galleryList.Add(imageUrl);
                     }
                 }
 
-                variant.ImageGallery = galleryPaths.ToArray();
+                variant.ImageGallery = galleryList.ToArray();
             }
             else
             {
-                // ✅ Nayi gallery nahi aayi toh purani hi rakhni hai
-                variant.ImageGallery = existingVariant?.ImageGallery;
+                variant.ImageGallery = existing.ImageGallery;
             }
 
             var result = await _businessLayer.UpdateVariant(id, variant);
             return Ok(result);
-
-
-
         }
 
-
+        // 🔥 DELETE VARIANT
         [HttpDelete("deletevariant/{id}")]
         [Authorize]
         public async Task<IActionResult> DeleteVariant(int id)
         {
-            try
-            {
-                var existingVariant = await _businessLayer.GetVariantById(id);
-                if (existingVariant == null)
-                    return NotFound("Variant not found");
-                // ✅ Purani main image delete karo
-                if (!string.IsNullOrEmpty(existingVariant.Image))
-                {
-                    string oldFilePath = Path.Combine(_env.WebRootPath,
-                                         existingVariant.Image.TrimStart('/'));
-                    if (System.IO.File.Exists(oldFilePath))
-                        System.IO.File.Delete(oldFilePath);
-                }
-                // ✅ Purani gallery images delete karo
-                if (existingVariant.ImageGallery != null)
-                {
-                    foreach (var oldImage in existingVariant.ImageGallery)
-                    {
-                        string oldFilePath = Path.Combine(_env.WebRootPath,
-                                             oldImage.TrimStart('/'));
-                        if (System.IO.File.Exists(oldFilePath))
-                            System.IO.File.Delete(oldFilePath);
-                    }
-                }
-                var result = await _businessLayer.DeleteVariant(id);
-                return Ok(new { message = "Variant deleted", data = result });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var existing = await _businessLayer.GetVariantById(id);
 
+            if (existing == null)
+                return NotFound(new { message = "Variant not found" });
 
+            await _businessLayer.DeleteVariant(id);
+
+            // ❗ Cloudinary delete optional (advanced)
+
+            return Ok(new { message = "Variant deleted" });
         }
     }
 }

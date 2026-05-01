@@ -1,69 +1,54 @@
 ﻿using firstproject.Models;
 using firstproject.Models.BusinessLayer;
+using firstproject.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace firstproject.Controllers
 {
     [ApiController]
-
-
-
     [Route("api/admin")]
-
     public class CustomerLogoController : ControllerBase
     {
         private readonly IBusinessLayer _businessLayer;
+        private readonly CloudinaryService _cloudinary;
 
-        public CustomerLogoController(IBusinessLayer businessLayer)
+        public CustomerLogoController(IBusinessLayer businessLayer, CloudinaryService cloudinary)
         {
             _businessLayer = businessLayer;
+            _cloudinary = cloudinary;
         }
 
-        [HttpGet]
-        [Route("getcustomerlogo")]
-
+        [HttpGet("getcustomerlogo")]
         public async Task<IActionResult> Get()
         {
             var result = await _businessLayer.GetCustomerLogo();
             return Ok(result);
         }
 
+        // 🔥 ADD
         [HttpPost("addcustomerlogo")]
         [Authorize]
         public async Task<IActionResult> Add([FromForm] customermodel model)
         {
-            // Image optional
             if (model.ImageFile != null)
             {
-                var folder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
-                if (!Directory.Exists(folder))
-                    Directory.CreateDirectory(folder);
-
-                var fileName = Guid.NewGuid() + Path.GetExtension(model.ImageFile.FileName);
-                var path = Path.Combine(folder, fileName);
-
-                using (var stream = new FileStream(path, FileMode.Create))
-                {
-                    await model.ImageFile.CopyToAsync(stream);
-                }
-
-                model.customerimage = "/uploads/" + fileName;
+                var imageUrl = await _cloudinary.UploadImageAsync(model.ImageFile);
+                model.customerimage = imageUrl;
             }
 
-            // agar image nahi aayi to customerimage null hi rahega
             var result = await _businessLayer.Add(model);
             return Ok(result);
         }
 
+        // 🔥 EDIT
         [HttpPut("editcustomerlogo/{id}")]
         [Authorize]
-
         public async Task<IActionResult> Edit(int id, [FromForm] customermodel model)
         {
-            // Step 1: Pehle existing record fetch karo
-            var existingBrand = await _businessLayer.GetCustomerLogoById(id);
-            if (existingBrand == null)
+            var existing = await _businessLayer.GetCustomerLogoById(id);
+
+            if (existing == null)
                 return NotFound(new
                 {
                     status = false,
@@ -72,41 +57,15 @@ namespace firstproject.Controllers
 
             if (model.ImageFile != null)
             {
-                // Step 2: Purani image delete karo
-                if (!string.IsNullOrEmpty(existingBrand.customerimage))
-                {
-                    var oldFilePath = Path.Combine(
-                        Directory.GetCurrentDirectory(), "wwwroot",
-                        existingBrand.customerimage.TrimStart('/').Replace('/', Path.DirectorySeparatorChar)
-                    );
-
-                    if (System.IO.File.Exists(oldFilePath))
-                        System.IO.File.Delete(oldFilePath);
-                }
-
-                // Step 3: Nayi image save karo
-                var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
-                if (!Directory.Exists(uploadPath))
-                    Directory.CreateDirectory(uploadPath);
-
-                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(model.ImageFile.FileName);
-                var filePath = Path.Combine(uploadPath, fileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await model.ImageFile.CopyToAsync(stream);
-                }
-
-                model.customerimage = "/uploads/" + fileName;
+                var imageUrl = await _cloudinary.UploadImageAsync(model.ImageFile);
+                model.customerimage = imageUrl;
             }
             else
             {
-                // Agar nai image nahi aayi toh purani rakho
-                model.customerimage = existingBrand.customerimage;
+                model.customerimage = existing.customerimage;
             }
 
-            // Step 4: DB update karo
-            var result = await _businessLayer.Edit(id, model);
+            await _businessLayer.Edit(id, model);
 
             return Ok(new
             {
@@ -115,45 +74,23 @@ namespace firstproject.Controllers
             });
         }
 
-
-
+        // 🔥 DELETE
         [HttpDelete("deletecustomerlogo/{id}")]
         [Authorize]
         public async Task<IActionResult> DeleteCustomerLogo(int id)
         {
-            // Step 1: Get existing record
-            var existingCustomerLogo = await _businessLayer.GetCustomerLogoById(id);
-            if (existingCustomerLogo == null)
+            var existing = await _businessLayer.GetCustomerLogoById(id);
+
+            if (existing == null)
                 return NotFound(new
                 {
                     status = false,
                     message = "Customer logo not found"
                 });
 
-            // Step 2: Delete from DB
-            var result = await _businessLayer.DeleteCustomerLogo(id);
+            await _businessLayer.DeleteCustomerLogo(id);
 
-            // ✅ FIX: correct check
-            if (result == null)
-                return NotFound(new
-                {
-                    status = false,
-                    message = "Record not found"
-                });
-
-            // Step 3: Delete image file
-            if (!string.IsNullOrEmpty(existingCustomerLogo.customerimage))
-            {
-                var oldFilePath = Path.Combine(
-                    Directory.GetCurrentDirectory(),
-                    "wwwroot",
-                    existingCustomerLogo.customerimage.TrimStart('/')
-                        .Replace('/', Path.DirectorySeparatorChar)
-                );
-
-                if (System.IO.File.Exists(oldFilePath))
-                    System.IO.File.Delete(oldFilePath);
-            }
+            // ❗ Cloudinary delete optional (advanced)
 
             return Ok(new
             {
@@ -161,8 +98,5 @@ namespace firstproject.Controllers
                 message = "Record successfully deleted"
             });
         }
-
-
-
     }
 }

@@ -1,5 +1,6 @@
 ﻿using firstproject.Models;
 using firstproject.Models.BusinessLayer;
+using firstproject.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,10 +11,12 @@ namespace firstproject.Controllers
     public class ChildCategoryController : ControllerBase
     {
         private readonly IBusinessLayer _businessLayer;
+        private readonly CloudinaryService _cloudinary;
 
-        public ChildCategoryController(IBusinessLayer businessLayer)
+        public ChildCategoryController(IBusinessLayer businessLayer, CloudinaryService cloudinary)
         {
             _businessLayer = businessLayer;
+            _cloudinary = cloudinary;
         }
 
         [HttpGet("get")]
@@ -23,33 +26,20 @@ namespace firstproject.Controllers
             return Ok(result);
         }
 
+        // 🔥 ADD
         [HttpPost("add")]
         [Authorize]
         public async Task<IActionResult> Add([FromForm] childCategoryModel model)
         {
             try
             {
-                // ✅ Image agar hai tabhi upload karo
-                if (model.ImageFile != null && model.ImageFile.Length > 0)
+                if (model.ImageFile != null)
                 {
-                    var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
-
-                    if (!Directory.Exists(uploadPath))
-                        Directory.CreateDirectory(uploadPath);
-
-                    var fileName = Guid.NewGuid().ToString() + Path.GetExtension(model.ImageFile.FileName);
-                    var filePath = Path.Combine(uploadPath, fileName);
-
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await model.ImageFile.CopyToAsync(stream);
-                    }
-
-                    model.ChildCategoryImageUrl = "/uploads/" + fileName;
+                    var imageUrl = await _cloudinary.UploadImageAsync(model.ImageFile);
+                    model.ChildCategoryImageUrl = imageUrl;
                 }
                 else
                 {
-                    // ✅ Image nahi aayi to NULL allow karo
                     model.ChildCategoryImageUrl = null;
                 }
 
@@ -72,12 +62,13 @@ namespace firstproject.Controllers
             }
         }
 
+        // 🔥 EDIT
         [HttpPut("edit/{id}")]
         [Authorize]
         public async Task<IActionResult> Edit(int id, [FromForm] childCategoryModel model)
         {
-            // 🔥 Step 1: Get existing record
             var existingData = await _businessLayer.GetChildCategoryById(id);
+
             if (existingData == null)
             {
                 return NotFound(new
@@ -87,41 +78,17 @@ namespace firstproject.Controllers
                 });
             }
 
-            // 🔥 Step 2: If new image uploaded → delete old image
             if (model.ImageFile != null)
             {
-                if (!string.IsNullOrEmpty(existingData.ChildCategoryImageUrl))
-                {
-                    var oldPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", existingData.ChildCategoryImageUrl.TrimStart('/'));
-
-                    if (System.IO.File.Exists(oldPath))
-                    {
-                        System.IO.File.Delete(oldPath); // ❌ OLD IMAGE DELETE
-                    }
-                }
-
-                // 🔥 Step 3: Upload new image
-                var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
-                if (!Directory.Exists(uploadPath))
-                    Directory.CreateDirectory(uploadPath);
-
-                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(model.ImageFile.FileName);
-                var filePath = Path.Combine(uploadPath, fileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await model.ImageFile.CopyToAsync(stream);
-                }
-
-                model.ChildCategoryImageUrl = "/uploads/" + fileName;
+                var imageUrl = await _cloudinary.UploadImageAsync(model.ImageFile);
+                model.ChildCategoryImageUrl = imageUrl;
             }
             else
             {
-                // 🔥 Agar new image nahi aayi → old image hi use karo
                 model.ChildCategoryImageUrl = existingData.ChildCategoryImageUrl;
             }
 
-            var result = await _businessLayer.Edit(id, model);
+            await _businessLayer.Edit(id, model);
 
             return Ok(new
             {
@@ -130,13 +97,13 @@ namespace firstproject.Controllers
             });
         }
 
+        // 🔥 DELETE
         [HttpDelete("delete/{id}")]
         [Authorize]
-
         public async Task<IActionResult> Delete(int id)
         {
-            // 🔥 Step 1: Get existing data
             var existingData = await _businessLayer.GetChildCategoryById(id);
+
             if (existingData == null)
             {
                 return NotFound(new
@@ -146,19 +113,9 @@ namespace firstproject.Controllers
                 });
             }
 
-            // 🔥 Step 2: Delete image from folder
-            if (!string.IsNullOrEmpty(existingData.ChildCategoryImageUrl))
-            {
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", existingData.ChildCategoryImageUrl.TrimStart('/'));
+            await _businessLayer.DeleteChildCategory(id);
 
-                if (System.IO.File.Exists(filePath))
-                {
-                    System.IO.File.Delete(filePath); // ❌ IMAGE DELETE
-                }
-            }
-
-            // 🔥 Step 3: Delete DB record
-            var result = await _businessLayer.DeleteChildCategory(id);
+            // ❗ Cloudinary delete (optional advanced)
 
             return Ok(new
             {
