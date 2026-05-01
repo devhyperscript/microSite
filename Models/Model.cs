@@ -190,6 +190,7 @@ namespace firstproject.Models
         public string? BrandName { get; set; }
         public List<string>? SizeNames { get; set; }
         public List<string>? ColorNames { get; set; }
+        public List<Variantmodel>? Variants { get; set; }
     }
 
 
