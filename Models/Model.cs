@@ -212,18 +212,20 @@ namespace firstproject.Models
 
     public class ProductFilterModel
     {
-        public int? CategoryId { get; set; }
-        public int? SubCategoryId { get; set; }
-        public int? ChildCategoryId { get; set; }
+        public int[]? CategoryIds { get; set; }
+        public int[]? SubCategoryIds { get; set; }
+        public int[]? ChildCategoryIds { get; set; }
+
         public int? BrandId { get; set; }
 
         public int[]? SizeIds { get; set; }
         public int[]? ColorIds { get; set; }
 
+        public decimal? MinPrice { get; set; }
+        public decimal? MaxPrice { get; set; }
+
         public string? Search { get; set; }
-
     }
-
 
 
 

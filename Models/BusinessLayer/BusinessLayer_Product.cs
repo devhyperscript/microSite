@@ -100,13 +100,21 @@ namespace firstproject.Models.BusinessLayer
 
         public async Task<List<Productmodel>> FilterProducts(ProductFilterModel filter)
         {
-            // 🔥 You can add extra logic here if needed
+            // 🔥 NULL SAFE
+            filter ??= new ProductFilterModel();
 
-            // Example:
-            if (!string.IsNullOrEmpty(filter.Search))
+            // 🔥 SEARCH CLEAN
+            if (!string.IsNullOrWhiteSpace(filter.Search))
             {
                 filter.Search = filter.Search.Trim();
             }
+
+            // 🔥 OPTIONAL: EMPTY ARRAY SAFE (avoid null checks everywhere)
+            filter.CategoryIds ??= Array.Empty<int>();
+            filter.SubCategoryIds ??= Array.Empty<int>();
+            filter.ChildCategoryIds ??= Array.Empty<int>();
+            filter.SizeIds ??= Array.Empty<int>();
+            filter.ColorIds ??= Array.Empty<int>();
 
             return await _databaseLayer.FilterProducts(filter);
         }

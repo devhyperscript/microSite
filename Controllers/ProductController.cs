@@ -214,15 +214,18 @@ namespace firstproject.Controllers
 
         // 🔥 FILTER
         [HttpGet("filter")]
-        public async Task<IActionResult> FilterProducts([FromQuery] ProductFilterModel filter)
+        public async Task<IActionResult> FilterProducts([FromQuery] ProductFilterModel? filter)
         {
-            var data = await _businessLayer.FilterProducts(filter);
+            if (filter == null)
+                filter = new ProductFilterModel();
+
+            var result = await _businessLayer.FilterProducts(filter);
 
             return Ok(new
             {
                 status = true,
-                count = data.Count,
-                data = data
+                count = result.Count,
+                data = result
             });
         }
     }

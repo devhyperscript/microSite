@@ -12,6 +12,7 @@ namespace firstproject.Models.DatabaseLayer
         Task MergeGuestCart(int userId, string ipAddress);
         Task<IActionResult> DeleteCartItem(int id);
         Task<IActionResult> ClearCart(int? userId, string? ipAddress);
+        Task<string> AddMultipleToCart(int? userId, string? ipAddress, List<int> productIds);
     }
 
     public partial class DatabaseLayer : IDatabaseLayer
@@ -134,6 +135,58 @@ namespace firstproject.Models.DatabaseLayer
                         insertCmd.Parameters.AddWithValue("@IpAddress", ipAddress ?? "");
 
                     await insertCmd.ExecuteNonQueryAsync();
+                }
+            }
+
+            return "Success";
+        }
+
+        public async Task<string> AddMultipleToCart(int? userId, string? ipAddress, List<int> productIds)
+        {
+            using (var connection = new NpgsqlConnection(this.DbConnection))
+            {
+                await connection.OpenAsync();
+
+                foreach (var productId in productIds)
+                {
+                    string checkQuery = userId.HasValue
+                        ? "SELECT COUNT(1) FROM addtocart WHERE userid = @UserId AND productid = @ProductId"
+                        : "SELECT COUNT(1) FROM addtocart WHERE ipaddress = @IpAddress AND productid = @ProductId";
+
+                    using (var checkCmd = new NpgsqlCommand(checkQuery, connection))
+                    {
+                        checkCmd.Parameters.AddWithValue("@ProductId", productId);
+
+                        if (userId.HasValue)
+                            checkCmd.Parameters.AddWithValue("@UserId", userId.Value);
+                        else
+                            checkCmd.Parameters.AddWithValue("@IpAddress", ipAddress ?? "");
+
+                        var count = (long)(await checkCmd.ExecuteScalarAsync() ?? 0);
+                        if (count > 0) continue;
+                    }
+
+                    string insertQuery = userId.HasValue ? @"
+                INSERT INTO addtocart (userid, productid, quantity, price)
+                SELECT @UserId, @ProductId, 1, COALESCE(p.discountprice, p.price)
+                FROM product p WHERE p.id = @ProductId;
+            " : @"
+                INSERT INTO addtocart (ipaddress, productid, quantity, price)
+                SELECT @IpAddress, @ProductId, 1, COALESCE(p.discountprice, p.price)
+                FROM product p WHERE p.id = @ProductId;
+            ";
+
+                    using (var insertCmd = new NpgsqlCommand(insertQuery, connection))
+                    {
+                        insertCmd.Parameters.AddWithValue("@ProductId", productId);
+
+                        if (userId.HasValue)
+                            insertCmd.Parameters.AddWithValue("@UserId", userId.Value);
+                        else
+                            insertCmd.Parameters.AddWithValue("@IpAddress", ipAddress ?? "");
+
+                        await insertCmd.ExecuteNonQueryAsync();
+                    }
                 }
             }
 

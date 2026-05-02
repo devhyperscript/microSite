@@ -165,111 +165,125 @@ namespace firstproject.Models.DatabaseLayer
             return products;
         }
 
-        public async Task<List<Productmodel>> FilterProducts(ProductFilterModel filter)
+      
+
+public async Task<List<Productmodel>> FilterProducts(ProductFilterModel filter)
+    {
+        List<Productmodel> products = new List<Productmodel>();
+
+        using (var connection = new NpgsqlConnection(this.DbConnection))
         {
-            List<Productmodel> products = new List<Productmodel>();
+            await connection.OpenAsync();
 
-            using (var connection = new NpgsqlConnection(this.DbConnection))
+            var query = @"SELECT * FROM product WHERE isactive = true";
+
+            // 🔥 CATEGORY (MULTIPLE)
+            if (filter.CategoryIds != null && filter.CategoryIds.Length > 0)
+                query += " AND categoryid = ANY(@categoryids)";
+
+            if (filter.SubCategoryIds != null && filter.SubCategoryIds.Length > 0)
+                query += " AND subcategoryid = ANY(@subcategoryids)";
+
+            if (filter.ChildCategoryIds != null && filter.ChildCategoryIds.Length > 0)
+                query += " AND childcategoryid = ANY(@childcategoryids)";
+
+            // 🔥 BRAND
+            if (filter.BrandId.HasValue)
+                query += " AND brandid = @brandid";
+
+            // 🔥 SIZE + COLOR (OR CONDITION)
+            List<string> orConditions = new List<string>();
+
+            if (filter.SizeIds != null && filter.SizeIds.Length > 0)
+                orConditions.Add("sizeids && @sizeids");
+
+            if (filter.ColorIds != null && filter.ColorIds.Length > 0)
+                orConditions.Add("colorids && @colorids");
+
+            if (orConditions.Count > 0)
+                query += " AND (" + string.Join(" OR ", orConditions) + ")";
+
+            // 🔥 PRICE FILTER (FINAL FIX)
+            if (filter.MinPrice.HasValue)
+                query += " AND COALESCE(discountprice, price) >= @minprice";
+
+            if (filter.MaxPrice.HasValue)
+                query += " AND COALESCE(discountprice, price) <= @maxprice";
+
+            // 🔥 SEARCH
+            if (!string.IsNullOrEmpty(filter.Search))
+                query += " AND LOWER(productname) LIKE LOWER(@search)";
+
+            // 🔥 SORT (FINAL PRICE)
+            query += " ORDER BY COALESCE(discountprice, price) ASC";
+
+            using (var cmd = new NpgsqlCommand(query, connection))
             {
-                await connection.OpenAsync();
+                // ✅ PARAMETERS
 
-                // 🔥 BASE QUERY
-                var query = @"SELECT * FROM product WHERE isactive = true";
+                if (filter.CategoryIds != null && filter.CategoryIds.Length > 0)
+                    cmd.Parameters.AddWithValue("categoryids", filter.CategoryIds);
 
-                // ✅ AND FILTERS
-                if (filter.CategoryId.HasValue)
-                    query += " AND categoryid = @categoryid";
+                if (filter.SubCategoryIds != null && filter.SubCategoryIds.Length > 0)
+                    cmd.Parameters.AddWithValue("subcategoryids", filter.SubCategoryIds);
 
-                if (filter.SubCategoryId.HasValue)
-                    query += " AND subcategoryid = @subcategoryid";
-
-                if (filter.ChildCategoryId.HasValue)
-                    query += " AND childcategoryid = @childcategoryid";
+                if (filter.ChildCategoryIds != null && filter.ChildCategoryIds.Length > 0)
+                    cmd.Parameters.AddWithValue("childcategoryids", filter.ChildCategoryIds);
 
                 if (filter.BrandId.HasValue)
-                    query += " AND brandid = @brandid";
-
-                // 🔥 OR FILTER GROUP (SIZE + COLOR)
-                List<string> orConditions = new List<string>();
+                    cmd.Parameters.AddWithValue("brandid", filter.BrandId.Value);
 
                 if (filter.SizeIds != null && filter.SizeIds.Length > 0)
-                    orConditions.Add("sizeids && @sizeids");
+                    cmd.Parameters.AddWithValue("sizeids", filter.SizeIds);
 
                 if (filter.ColorIds != null && filter.ColorIds.Length > 0)
-                    orConditions.Add("colorids && @colorids");
+                    cmd.Parameters.AddWithValue("colorids", filter.ColorIds);
 
-                if (orConditions.Count > 0)
-                {
-                    query += " AND (" + string.Join(" OR ", orConditions) + ")";
-                }
+                // 🔥 PRICE PARAM FIX (NO ERROR)
+                if (filter.MinPrice.HasValue)
+                    cmd.Parameters.Add("minprice", NpgsqlDbType.Numeric).Value = filter.MinPrice.Value;
 
-                // 🔥 SEARCH
+                if (filter.MaxPrice.HasValue)
+                    cmd.Parameters.Add("maxprice", NpgsqlDbType.Numeric).Value = filter.MaxPrice.Value;
+
                 if (!string.IsNullOrEmpty(filter.Search))
-                    query += " AND LOWER(productname) LIKE LOWER(@search)";
+                    cmd.Parameters.AddWithValue("search", "%" + filter.Search + "%");
 
-                // 🔥 SORT
-                query += " ORDER BY productname ASC";
-
-                using (var cmd = new NpgsqlCommand(query, connection))
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
-                    // ✅ PARAMETERS
-
-                    if (filter.CategoryId.HasValue)
-                        cmd.Parameters.AddWithValue("categoryid", filter.CategoryId.Value);
-
-                    if (filter.SubCategoryId.HasValue)
-                        cmd.Parameters.AddWithValue("subcategoryid", filter.SubCategoryId.Value);
-
-                    if (filter.ChildCategoryId.HasValue)
-                        cmd.Parameters.AddWithValue("childcategoryid", filter.ChildCategoryId.Value);
-
-                    if (filter.BrandId.HasValue)
-                        cmd.Parameters.AddWithValue("brandid", filter.BrandId.Value);
-
-                    if (filter.SizeIds != null && filter.SizeIds.Length > 0)
-                        cmd.Parameters.AddWithValue("sizeids", filter.SizeIds);
-
-                    if (filter.ColorIds != null && filter.ColorIds.Length > 0)
-                        cmd.Parameters.AddWithValue("colorids", filter.ColorIds);
-
-                    if (!string.IsNullOrEmpty(filter.Search))
-                        cmd.Parameters.AddWithValue("search", "%" + filter.Search + "%");
-
-                    using (var reader = await cmd.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
                     {
-                        while (await reader.ReadAsync())
+                        products.Add(new Productmodel
                         {
-                            products.Add(new Productmodel
-                            {
-                                Id = Convert.ToInt32(reader["id"]),
-                                ProductName = reader["productname"]?.ToString(),
-                                Slug = reader["slug"]?.ToString(),
-                                Sku = reader["sku"]?.ToString(),
-                                Price = Convert.ToDecimal(reader["price"]),
-                                DiscountPrice = reader["discountprice"] as decimal?,
-                                Stock = Convert.ToInt32(reader["stock"]),
-                                CategoryId = Convert.ToInt32(reader["categoryid"]),
-                                SubCategoryId = Convert.ToInt32(reader["subcategoryid"]),
-                                ChildCategoryId = reader["childcategoryid"] as int?,
-                                BrandId = reader["brandid"] as int?,
-                                Image = reader["image"]?.ToString(),
-                                ImageGallery = reader["imagegallery"] as string[],
-                                IsActive = Convert.ToBoolean(reader["isactive"]),
-                                CreatedAt = Convert.ToDateTime(reader["createdat"])
-                            });
-                        }
+                            Id = Convert.ToInt32(reader["id"]),
+                            ProductName = reader["productname"]?.ToString(),
+                            Slug = reader["slug"]?.ToString(),
+                            Sku = reader["sku"]?.ToString(),
+                            Price = Convert.ToDecimal(reader["price"]),
+                            DiscountPrice = reader["discountprice"] as decimal?,
+                            Stock = Convert.ToInt32(reader["stock"]),
+                            CategoryId = Convert.ToInt32(reader["categoryid"]),
+                            SubCategoryId = Convert.ToInt32(reader["subcategoryid"]),
+                            ChildCategoryId = reader["childcategoryid"] as int?,
+                            BrandId = reader["brandid"] as int?,
+                            Image = reader["image"]?.ToString(),
+                            ImageGallery = reader["imagegallery"] as string[],
+                            IsActive = Convert.ToBoolean(reader["isactive"]),
+                            CreatedAt = Convert.ToDateTime(reader["createdat"])
+                        });
                     }
                 }
             }
-
-            return products;
         }
 
+        return products;
+    }
 
 
 
 
-        public async Task<IActionResult> AddProduct(Productmodel product)
+
+    public async Task<IActionResult> AddProduct(Productmodel product)
         {
             using (var connection = new NpgsqlConnection(this.DbConnection))
             {

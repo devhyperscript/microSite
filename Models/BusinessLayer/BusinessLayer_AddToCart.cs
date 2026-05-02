@@ -11,6 +11,7 @@ namespace firstproject.Models.BusinessLayer
         Task MergeGuestCart(int userId, string ipAddress);
         Task<IActionResult> DeleteCartItem(int id);
         Task<IActionResult> ClearCart(int? userId, string? ipAddress);
+        Task<string> AddMultipleToCart(int? userId, string? ipAddress, List<int> productIds);
     }
 
     public partial class BusinessLayer : IBusinessLayer
@@ -37,6 +38,11 @@ namespace firstproject.Models.BusinessLayer
 
                 return await _databaseLayer.GetCart(null, ipAddress);
             }
+        }
+
+        public async Task<string> AddMultipleToCart(int? userId, string? ipAddress, List<int> productIds)
+        {
+            return await _databaseLayer.AddMultipleToCart(userId, ipAddress, productIds);
         }
 
         // =========================
