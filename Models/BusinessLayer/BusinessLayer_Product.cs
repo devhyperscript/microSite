@@ -1,5 +1,7 @@
 ﻿using firstproject.Models.DatabaseLayer;
 using Microsoft.AspNetCore.Mvc;
+using Npgsql;
+using System.Data.Common;
 using System.Text.RegularExpressions;
 
 namespace firstproject.Models.BusinessLayer
@@ -11,6 +13,8 @@ namespace firstproject.Models.BusinessLayer
         Task<Productmodel?> GetProductById(int id);
         Task<IActionResult> UpdateProduct(int id, Productmodel product);
         Task<IActionResult> DeleteProduct(int id);
+        Task<List<Productmodel>> FilterProducts(ProductFilterModel filter);
+
     }
 
     public partial class BusinessLayer : IBusinessLayer
@@ -92,6 +96,19 @@ namespace firstproject.Models.BusinessLayer
             text = Regex.Replace(text, @"\s+", " ").Trim();
 
             return text.Replace(" ", "-");
+        }
+
+        public async Task<List<Productmodel>> FilterProducts(ProductFilterModel filter)
+        {
+            // 🔥 You can add extra logic here if needed
+
+            // Example:
+            if (!string.IsNullOrEmpty(filter.Search))
+            {
+                filter.Search = filter.Search.Trim();
+            }
+
+            return await _databaseLayer.FilterProducts(filter);
         }
     }
 }

@@ -193,6 +193,19 @@ namespace firstproject.Models
         public List<Variantmodel>? Variants { get; set; }
     }
 
+    public class ProductFilterModel
+    {
+        public int? CategoryId { get; set; }
+        public int? SubCategoryId { get; set; }
+        public int? ChildCategoryId { get; set; }
+        public int? BrandId { get; set; }
+
+        public int[]? SizeIds { get; set; }
+        public int[]? ColorIds { get; set; }
+
+        public string? Search { get; set; }
+    }
+
 
 
 
