@@ -1,6 +1,7 @@
 ﻿using firstproject.Helpers;
 using firstproject.Models.BusinessLayer;
 using Microsoft.AspNetCore.Mvc;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace firstproject.Controllers
 {
@@ -128,7 +129,7 @@ namespace firstproject.Controllers
         {
             return await _businessLayer.DeleteCartItem(id);
         }
-//ssdsd
+        //ssdsd
 
         [HttpDelete("clearcart")]
         public async Task<IActionResult> ClearCart()
