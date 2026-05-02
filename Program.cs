@@ -18,19 +18,17 @@ var builder = WebApplication.CreateBuilder(args);
 
 // ✅ DB Connection
 var connectionString = builder.Configuration.GetConnectionString("AppDbContextConnection")
-    ?? throw new InvalidOperationException("Connection string not found.");
+    ?? throw new InvalidOperationException("Connection string 'AppDbContextConnection' not found.");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// ✅ Identity
+// ✅ Identity Setup
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
-{
-    options.SignIn.RequireConfirmedAccount = true;
-})
-.AddEntityFrameworkStores<AppDbContext>();
+    options.SignIn.RequireConfirmedAccount = true)
+    .AddEntityFrameworkStores<AppDbContext>();
 
-// ✅ JWT
+// ✅ JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"];
 
@@ -53,53 +51,59 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// ✅ CORS (IMPORTANT)
+// ✅ CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials(); // 🔥 MUST
+        policy
+            .WithOrigins(
+                "http://localhost",
+                "http://localhost:5173",
+                "http://microsite.workarya.com",
+                "https://microsite.workarya.com"
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
     });
 });
 
 // ✅ ForwardedHeaders
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    options.ForwardedHeaders =
-        ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
     options.KnownNetworks.Clear();
     options.KnownProxies.Clear();
 });
 
-// ✅ Session (FIXED FOR HTTP)
+// ✅ Session
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromDays(30);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
-
-    options.Cookie.SameSite = SameSiteMode.Lax; // 🔥 FIX
-    options.Cookie.SecurePolicy = CookieSecurePolicy.None; // 🔥 FIX
+    options.Cookie.SameSite = SameSiteMode.None;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
 
 // ✅ Controllers
 builder.Services.AddControllersWithViews();
 
-// ✅ Cloudinary
+
+// 🔥🔥🔥 CLOUDINARY CONFIG (IMPORTANT)
 builder.Services.Configure<CloudinarySettings>(
     builder.Configuration.GetSection("CloudinarySettings"));
 
 builder.Services.AddScoped<CloudinaryService>();
 
+
 // ✅ Custom Services
 builder.Services.AddScoped<IDatabaseLayer, DatabaseLayer>();
 builder.Services.AddScoped<IBusinessLayer, BusinessLayer>();
 builder.Services.AddScoped<JwtHelper>();
+
 
 var app = builder.Build();
 
@@ -112,18 +116,14 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// ❌ REMOVE HTTPS REDIRECTION (IMPORTANT)
-// app.UseHttpsRedirection();
-
+app.UseHttpsRedirection();
 app.UseRouting();
-
 app.UseCors("AllowFrontend");
-
 app.UseSession();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
+// ✅ Routes
 app.MapStaticAssets();
 
 app.MapControllerRoute(
