@@ -19,55 +19,66 @@ namespace firstproject.Controllers
             _cloudinary = cloudinary;
         }
 
-        [HttpGet]
-        [Route("getbrand")]
+        // ✅ GET
+        [HttpGet("getbrand")]
         public async Task<IActionResult> Get()
         {
             var result = await _businessLayer.GetBrand();
-            return Ok(result);
+            return Ok(new { status = true, data = result });
         }
 
-        // 🔥 ADD BRAND (Cloudinary Upload)
+        // ✅ ADD BRAND
         [HttpPost("addbrand")]
         [Authorize]
         public async Task<IActionResult> Add([FromForm] Brandmodel model)
         {
+            var result = await _businessLayer.Add(model);
+
             if (model.ImageFile != null)
             {
-                var imageUrl = await _cloudinary.UploadImageAsync(model.ImageFile);
-                model.BrandImage = imageUrl;
+                var upload = await _cloudinary.UploadImageAsync(
+                    model.ImageFile,
+                    $"brands/{result.Id}"
+                );
+
+                model.BrandImage = upload.Url;
+                model.PublicId = upload.PublicId;
+
+                await _businessLayer.UpdateBrandImage(result.Id, model);
             }
 
-            var result = await _businessLayer.Add(model);
-            return Ok(result);
+            return Ok(new
+            {
+                status = true,
+                message = "Brand added successfully",
+                data = result
+            });
         }
 
-        // 🔥 EDIT BRAND
+        // ✅ EDIT BRAND (🔥 FIXED REPLACE)
         [HttpPut("editbrand/{id}")]
         [Authorize]
         public async Task<IActionResult> Edit(int id, [FromForm] Brandmodel model)
         {
-            var existingBrand = await _businessLayer.GetBrandById(id);
+            var existing = await _businessLayer.GetBrandById(id);
 
-            if (existingBrand == null)
-                return NotFound(new
-                {
-                    status = false,
-                    message = "Brand not found"
-                });
+            if (existing == null)
+                return NotFound(new { status = false, message = "Brand not found" });
 
             if (model.ImageFile != null)
             {
-                // 👉 New image upload (old delete optional)
-                var imageUrl = await _cloudinary.UploadImageAsync(model.ImageFile);
-                model.BrandImage = imageUrl;
+                var upload = await _cloudinary.ReplaceImageAsync(
+                    model.ImageFile,
+                    $"brands/{id}"   // 🔥 SAME ID
+                );
+
+                model.BrandImage = upload.Url;
+                model.PublicId = upload.PublicId;
             }
             else
             {
-
-            }
-            {
-                model.BrandImage = existingBrand.BrandImage;
+                model.BrandImage = existing.BrandImage;
+                model.PublicId = existing.PublicId;
             }
 
             await _businessLayer.Edit(id, model);
@@ -75,31 +86,23 @@ namespace firstproject.Controllers
             return Ok(new
             {
                 status = true,
-                message = "Record successfully updated"
+                message = "Brand updated successfully"
             });
         }
 
-        // 🔥 DELETE BRAND
+        // ✅ DELETE BRAND
         [HttpDelete("deletebrand/{id}")]
         [Authorize]
-        public async Task<IActionResult> DeleteBrand(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var existingBrand = await _businessLayer.GetBrandById(id);
-
-            if (existingBrand == null)
-                return NotFound(new
-                {
-                    status = false,
-                    message = "Brand not found"
-                });
+            await _cloudinary.DeleteImageAsync($"brands/{id}");
 
             await _businessLayer.DeleteBrand(id);
 
-            // ❗ Cloudinary delete optional (advanced)
             return Ok(new
             {
                 status = true,
-                message = "Record successfully deleted"
+                message = "Brand deleted successfully"
             });
         }
     }

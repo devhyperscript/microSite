@@ -3,7 +3,6 @@ using CloudinaryDotNet.Actions;
 using firstproject.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
-using Npgsql.BackendMessages;
 
 namespace firstproject.Services
 {
@@ -22,21 +21,61 @@ namespace firstproject.Services
             _cloudinary = new Cloudinary(account);
         }
 
-        public async Task<string> UploadImageAsync(IFormFile file)
+        // 🔥 ADD IMAGE
+        public async Task<(string Url, string PublicId)> UploadImageAsync(IFormFile file, string publicId)
         {
             if (file == null || file.Length == 0)
-                return string.Empty;
+                return (string.Empty, string.Empty);
 
             using var stream = file.OpenReadStream();
 
             var uploadParams = new ImageUploadParams
             {
-                File = new FileDescription(file.FileName, stream)
+                File = new FileDescription(file.FileName, stream),
+                PublicId = publicId,
+                UseFilename = false,
+                UniqueFilename = false
             };
 
-            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+            var result = await _cloudinary.UploadAsync(uploadParams);
 
-            return uploadResult.SecureUrl.ToString();
+            return (result.SecureUrl.ToString(), result.PublicId);
+        }
+
+        // 🔥 REPLACE IMAGE (FINAL FIX)
+        public async Task<(string Url, string PublicId)> ReplaceImageAsync(IFormFile file, string publicId)
+        {
+            if (file == null || file.Length == 0)
+                return (string.Empty, string.Empty);
+
+            // 🔥 STEP 1: DELETE OLD IMAGE
+            await _cloudinary.DestroyAsync(new DeletionParams(publicId));
+
+            using var stream = file.OpenReadStream();
+
+            // 🔥 STEP 2: UPLOAD NEW IMAGE
+            var uploadParams = new ImageUploadParams
+            {
+                File = new FileDescription(file.FileName, stream),
+                PublicId = publicId,
+                UseFilename = false,
+                UniqueFilename = false
+            };
+
+            var result = await _cloudinary.UploadAsync(uploadParams);
+
+            return (result.SecureUrl.ToString(), result.PublicId);
+        }
+
+        // 🔥 DELETE IMAGE
+        public async Task<bool> DeleteImageAsync(string publicId)
+        {
+            if (string.IsNullOrEmpty(publicId))
+                return false;
+
+            var result = await _cloudinary.DestroyAsync(new DeletionParams(publicId));
+
+            return result.Result == "ok";
         }
     }
 }

@@ -19,6 +19,7 @@ namespace firstproject.Controllers
             _cloudinary = cloudinary;
         }
 
+        // ✅ GET
         [HttpGet("get")]
         public async Task<IActionResult> Get()
         {
@@ -33,12 +34,10 @@ namespace firstproject.Controllers
         {
             if (model.ImageFile != null)
             {
-                var imageUrl = await _cloudinary.UploadImageAsync(model.ImageFile);
-                model.SubCategoryImageUrl = imageUrl;
-            }
-            else
-            {
-                model.SubCategoryImageUrl = null;
+                var upload = await _cloudinary.UploadImageAsync(model.ImageFile, "subcategory");
+
+                model.SubCategoryImageUrl = upload.Url;
+                model.PublicId = upload.PublicId; // 🔥 SAVE
             }
 
             await _businessLayer.Add(model);
@@ -66,12 +65,22 @@ namespace firstproject.Controllers
 
             if (model.ImageFile != null)
             {
-                var imageUrl = await _cloudinary.UploadImageAsync(model.ImageFile);
-                model.SubCategoryImageUrl = imageUrl;
+                // 🔥 DELETE OLD IMAGE
+                if (!string.IsNullOrEmpty(existing.PublicId))
+                {
+                    await _cloudinary.DeleteImageAsync(existing.PublicId);
+                }
+
+                // 🔥 UPLOAD NEW
+                var upload = await _cloudinary.UploadImageAsync(model.ImageFile, "subcategory");
+
+                model.SubCategoryImageUrl = upload.Url;
+                model.PublicId = upload.PublicId;
             }
             else
             {
                 model.SubCategoryImageUrl = existing.SubCategoryImageUrl;
+                model.PublicId = existing.PublicId;
             }
 
             await _businessLayer.Edit(id, model);
@@ -97,9 +106,13 @@ namespace firstproject.Controllers
                     message = "SubCategory not found"
                 });
 
-            await _businessLayer.DeleteSubCategory(id);
+            // 🔥 DELETE IMAGE FROM CLOUDINARY
+            if (!string.IsNullOrEmpty(existing.PublicId))
+            {
+                await _cloudinary.DeleteImageAsync(existing.PublicId);
+            }
 
-            // ❗ Cloudinary delete optional (advanced)
+            await _businessLayer.DeleteSubCategory(id);
 
             return Ok(new
             {

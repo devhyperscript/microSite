@@ -19,6 +19,7 @@ namespace firstproject.Controllers
             _cloudinary = cloudinary;
         }
 
+        // ✅ GET
         [HttpGet("getcustomerlogo")]
         public async Task<IActionResult> Get()
         {
@@ -26,22 +27,31 @@ namespace firstproject.Controllers
             return Ok(result);
         }
 
-        // 🔥 ADD
+        // ✅ ADD (🔥 FIXED)
         [HttpPost("addcustomerlogo")]
         [Authorize]
         public async Task<IActionResult> Add([FromForm] customermodel model)
         {
             if (model.ImageFile != null)
             {
-                var imageUrl = await _cloudinary.UploadImageAsync(model.ImageFile);
-                model.customerimage = imageUrl;
+                // 🔥 upload in customerlogo folder
+                var upload = await _cloudinary.UploadImageAsync(model.ImageFile, "customerlogo");
+
+                model.customerimage = upload.Url;
+                model.PublicId = upload.PublicId;
             }
 
             var result = await _businessLayer.Add(model);
-            return Ok(result);
+
+            return Ok(new
+            {
+                status = true,
+                message = "Customer logo added successfully",
+                data = result
+            });
         }
 
-        // 🔥 EDIT
+        // ✅ EDIT (🔥 FIXED)
         [HttpPut("editcustomerlogo/{id}")]
         [Authorize]
         public async Task<IActionResult> Edit(int id, [FromForm] customermodel model)
@@ -57,12 +67,22 @@ namespace firstproject.Controllers
 
             if (model.ImageFile != null)
             {
-                var imageUrl = await _cloudinary.UploadImageAsync(model.ImageFile);
-                model.customerimage = imageUrl;
+                // 🔥 DELETE OLD IMAGE
+                if (!string.IsNullOrEmpty(existing.PublicId))
+                {
+                    await _cloudinary.DeleteImageAsync(existing.PublicId);
+                }
+
+                // 🔥 UPLOAD NEW IMAGE
+                var upload = await _cloudinary.UploadImageAsync(model.ImageFile, "customerlogo");
+
+                model.customerimage = upload.Url;
+                model.PublicId = upload.PublicId;
             }
             else
             {
                 model.customerimage = existing.customerimage;
+                model.PublicId = existing.PublicId;
             }
 
             await _businessLayer.Edit(id, model);
@@ -74,7 +94,7 @@ namespace firstproject.Controllers
             });
         }
 
-        // 🔥 DELETE
+        // ✅ DELETE (🔥 FIXED)
         [HttpDelete("deletecustomerlogo/{id}")]
         [Authorize]
         public async Task<IActionResult> DeleteCustomerLogo(int id)
@@ -88,9 +108,13 @@ namespace firstproject.Controllers
                     message = "Customer logo not found"
                 });
 
-            await _businessLayer.DeleteCustomerLogo(id);
+            // 🔥 DELETE IMAGE FROM CLOUDINARY
+            if (!string.IsNullOrEmpty(existing.PublicId))
+            {
+                await _cloudinary.DeleteImageAsync(existing.PublicId);
+            }
 
-            // ❗ Cloudinary delete optional (advanced)
+            await _businessLayer.DeleteCustomerLogo(id);
 
             return Ok(new
             {

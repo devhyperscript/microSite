@@ -31,28 +31,32 @@ namespace firstproject.Controllers
         [Authorize]
         public async Task<IActionResult> AddProduct([FromForm] Productmodel product)
         {
-            // ✅ Main image upload
+            // ✅ Main image
             if (product.ImageFile != null)
             {
-                var imageUrl = await _cloudinary.UploadImageAsync(product.ImageFile);
-                product.Image = imageUrl;
+                var upload = await _cloudinary.UploadImageAsync(product.ImageFile, "products");
+                product.Image = upload.Url;
+                product.PublicId = upload.PublicId;
             }
 
-            // ✅ Gallery images upload
+            // ✅ Gallery images
             if (product.GalleryFiles != null && product.GalleryFiles.Length > 0)
             {
                 var galleryList = new List<string>();
+                var publicIds = new List<string>();
 
                 foreach (var file in product.GalleryFiles)
                 {
                     if (file != null)
                     {
-                        var imageUrl = await _cloudinary.UploadImageAsync(file);
-                        galleryList.Add(imageUrl);
+                        var upload = await _cloudinary.UploadImageAsync(file, "products");
+                        galleryList.Add(upload.Url);
+                        publicIds.Add(upload.PublicId);
                     }
                 }
 
                 product.ImageGallery = galleryList.ToArray();
+                product.GalleryPublicIds = publicIds.ToArray();
             }
 
             // ✅ Slug
@@ -61,7 +65,13 @@ namespace firstproject.Controllers
                 : GenerateSlug(product.ProductName);
 
             var result = await _businessLayer.AddProduct(product);
-            return Ok(result);
+
+            return Ok(new
+            {
+                status = true,
+                message = "Product added successfully",
+                data = result
+            });
         }
 
         // 🔥 UPDATE PRODUCT
@@ -77,37 +87,67 @@ namespace firstproject.Controllers
             // ✅ Main image update
             if (product.ImageFile != null)
             {
-                var imageUrl = await _cloudinary.UploadImageAsync(product.ImageFile);
-                product.Image = imageUrl;
+                // delete old
+                if (!string.IsNullOrEmpty(existingProduct.PublicId))
+                {
+                    await _cloudinary.DeleteImageAsync(existingProduct.PublicId);
+                }
+
+                var upload = await _cloudinary.UploadImageAsync(product.ImageFile, "products");
+                product.Image = upload.Url;
+                product.PublicId = upload.PublicId;
             }
             else
             {
                 product.Image = existingProduct.Image;
+                product.PublicId = existingProduct.PublicId;
             }
 
             // ✅ Gallery update
             if (product.GalleryFiles != null && product.GalleryFiles.Length > 0)
             {
+                // delete old gallery
+                if (existingProduct.GalleryPublicIds != null)
+                {
+                    foreach (var pid in existingProduct.GalleryPublicIds)
+                    {
+                        if (!string.IsNullOrEmpty(pid))
+                        {
+                            await _cloudinary.DeleteImageAsync(pid);
+                        }
+                    }
+                }
+
                 var galleryList = new List<string>();
+                var publicIds = new List<string>();
 
                 foreach (var file in product.GalleryFiles)
                 {
                     if (file != null)
                     {
-                        var imageUrl = await _cloudinary.UploadImageAsync(file);
-                        galleryList.Add(imageUrl);
+                        var upload = await _cloudinary.UploadImageAsync(file, "products");
+                        galleryList.Add(upload.Url);
+                        publicIds.Add(upload.PublicId);
                     }
                 }
 
                 product.ImageGallery = galleryList.ToArray();
+                product.GalleryPublicIds = publicIds.ToArray();
             }
             else
             {
                 product.ImageGallery = existingProduct.ImageGallery;
+                product.GalleryPublicIds = existingProduct.GalleryPublicIds;
             }
 
             var result = await _businessLayer.UpdateProduct(id, product);
-            return Ok(result);
+
+            return Ok(new
+            {
+                status = true,
+                message = "Product updated successfully",
+                data = result
+            });
         }
 
         // 🔥 DELETE PRODUCT
@@ -120,9 +160,25 @@ namespace firstproject.Controllers
             if (existingProduct == null)
                 return NotFound(new { status = false, message = "Product not found" });
 
-            await _businessLayer.DeleteProduct(id);
+            // delete main image
+            if (!string.IsNullOrEmpty(existingProduct.PublicId))
+            {
+                await _cloudinary.DeleteImageAsync(existingProduct.PublicId);
+            }
 
-            // ❗ Cloudinary delete optional (advanced)
+            // delete gallery images
+            if (existingProduct.GalleryPublicIds != null)
+            {
+                foreach (var pid in existingProduct.GalleryPublicIds)
+                {
+                    if (!string.IsNullOrEmpty(pid))
+                    {
+                        await _cloudinary.DeleteImageAsync(pid);
+                    }
+                }
+            }
+
+            await _businessLayer.DeleteProduct(id);
 
             return Ok(new
             {
@@ -142,6 +198,7 @@ namespace firstproject.Controllers
             return Ok(new { status = true, data = product });
         }
 
+        // 🔥 SLUG
         private string GenerateSlug(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
@@ -155,6 +212,7 @@ namespace firstproject.Controllers
             return text;
         }
 
+        // 🔥 FILTER
         [HttpGet("filter")]
         public async Task<IActionResult> FilterProducts([FromQuery] ProductFilterModel filter)
         {
@@ -167,6 +225,5 @@ namespace firstproject.Controllers
                 data = data
             });
         }
-
     }
 }

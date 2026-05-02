@@ -19,6 +19,7 @@ namespace firstproject.Controllers
             _cloudinary = cloudinary;
         }
 
+        // ✅ GET ALL
         [HttpGet("get")]
         [AllowAnonymous]
         public async Task<IActionResult> Get()
@@ -37,15 +38,18 @@ namespace firstproject.Controllers
             return Ok(safeResult);
         }
 
-        // 🔥 ADD CATEGORY (Cloudinary Upload)
+        // ✅ ADD CATEGORY (🔥 FIXED)
         [HttpPost("add")]
         [Authorize]
         public async Task<IActionResult> Add([FromForm] categoryModel model)
         {
             if (model.ImageFile != null)
             {
-                var imageUrl = await _cloudinary.UploadImageAsync(model.ImageFile);
-                model.ImageUrl = imageUrl;
+                // 🔥 Upload in "category" folder
+                var upload = await _cloudinary.UploadImageAsync(model.ImageFile, "category");
+
+                model.ImageUrl = upload.Url;
+                model.PublicId = upload.PublicId; // 🔥 SAVE
             }
 
             await _businessLayer.Add(model);
@@ -57,7 +61,7 @@ namespace firstproject.Controllers
             });
         }
 
-        // 🔥 EDIT CATEGORY
+        // ✅ EDIT CATEGORY (🔥 FIXED)
         [HttpPut("edit/{id}")]
         [Authorize]
         public async Task<IActionResult> Edit(int id, [FromForm] categoryModel model)
@@ -73,12 +77,22 @@ namespace firstproject.Controllers
 
             if (model.ImageFile != null)
             {
-                var imageUrl = await _cloudinary.UploadImageAsync(model.ImageFile);
-                model.ImageUrl = imageUrl;
+                // 🔥 DELETE OLD IMAGE
+                if (!string.IsNullOrEmpty(existing.PublicId))
+                {
+                    await _cloudinary.DeleteImageAsync(existing.PublicId);
+                }
+
+                // 🔥 UPLOAD NEW IMAGE
+                var upload = await _cloudinary.UploadImageAsync(model.ImageFile, "category");
+
+                model.ImageUrl = upload.Url;
+                model.PublicId = upload.PublicId;
             }
             else
             {
                 model.ImageUrl = existing.ImageUrl;
+                model.PublicId = existing.PublicId;
             }
 
             await _businessLayer.Edit(id, model);
@@ -90,7 +104,7 @@ namespace firstproject.Controllers
             });
         }
 
-        // 🔥 DELETE CATEGORY
+        // ✅ DELETE CATEGORY (🔥 FIXED)
         [HttpDelete("delete/{id}")]
         [Authorize]
         public async Task<IActionResult> DeleteCategory(int id)
@@ -104,9 +118,13 @@ namespace firstproject.Controllers
                     message = "Record not found"
                 });
 
-            await _businessLayer.DeleteCategory(id);
+            // 🔥 DELETE IMAGE FROM CLOUDINARY
+            if (!string.IsNullOrEmpty(existing.PublicId))
+            {
+                await _cloudinary.DeleteImageAsync(existing.PublicId);
+            }
 
-            // ❗ Cloudinary delete (optional advanced)
+            await _businessLayer.DeleteCategory(id);
 
             return Ok(new
             {

@@ -54,6 +54,7 @@ namespace firstproject.Models
 
         // ✅ Image upload ke liye (IMPORTANT)
         public IFormFile? ImageFile { get; set; }
+        public string? PublicId { get; set; }
     }
 
     public class SubCategoryModel
@@ -72,6 +73,7 @@ namespace firstproject.Models
         public bool Status { get; set; } = true;
 
         public IFormFile? ImageFile { get; set; }
+        public string? PublicId { get; set; }
     }
 
     public class childCategoryModel
@@ -86,6 +88,7 @@ namespace firstproject.Models
         public DateTime CreatedAt { get; set; }
         public bool Status { get; set; } = true;
         public IFormFile? ImageFile { get; set; }
+        public string? PublicId { get; set; }
     }
 
 
@@ -110,6 +113,7 @@ namespace firstproject.Models
         public bool status { get; set; } = true;
 
         public DateTime createdat { get; set; }
+        public string? PublicId { get; set; }
     }
 
     public class Colormodel
@@ -168,29 +172,41 @@ namespace firstproject.Models
         public string? ShortDescription { get; set; }
         public string? Description { get; set; }
         public decimal Price { get; set; }
-
         public decimal? DiscountPrice { get; set; }
         public int Stock { get; set; }
+
         public int CategoryId { get; set; }
         public int SubCategoryId { get; set; }
         public int? ChildCategoryId { get; set; }
         public int? BrandId { get; set; }
+
         public int[]? SizeIds { get; set; }
         public int[]? ColorIds { get; set; }
+
+        // 🔥 FILES
         public IFormFile? ImageFile { get; set; }
         public IFormFile[]? GalleryFiles { get; set; }
+
+        // 🔥 STORED DATA
         public string? Image { get; set; }
         public string[]? ImageGallery { get; set; }
+
+        // 🔥 NEW (VERY IMPORTANT)
+        public string? PublicId { get; set; }              // main image
+        public string[]? GalleryPublicIds { get; set; }    // gallery images
+
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
 
-        // ✅ Name fields add karo
+        // ✅ Name fields
         public string? CategoryName { get; set; }
         public string? SubCategoryName { get; set; }
         public string? ChildCategoryName { get; set; }
         public string? BrandName { get; set; }
+
         public List<string>? SizeNames { get; set; }
         public List<string>? ColorNames { get; set; }
+
         public List<Variantmodel>? Variants { get; set; }
     }
 
@@ -205,6 +221,7 @@ namespace firstproject.Models
         public int[]? ColorIds { get; set; }
 
         public string? Search { get; set; }
+
     }
 
 
@@ -238,6 +255,9 @@ namespace firstproject.Models
         // For joins (optional)
         public string[]? SizeNames { get; set; }
         public string[]? ColorNames { get; set; }
+        public string[]? GalleryPublicIds { get; set; }
+        public string? PublicId { get; set; }
+
     }
 
     public class CartItemModel

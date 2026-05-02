@@ -7,148 +7,145 @@ namespace firstproject.Models.DatabaseLayer
     {
         Task<List<Brandmodel>> GetBrand();
         Task<Brandmodel> Add(Brandmodel model);
-        Task<IActionResult> Edit(int id, [FromForm] Brandmodel model);
-        Task<IActionResult> DeleteBrand(int id);
+        Task<bool> Edit(int id, Brandmodel model);
+        Task<bool> DeleteBrand(int id);
         Task<Brandmodel> GetBrandById(int id);
+
+        Task UpdateBrandImage(int id, Brandmodel model);
     }
 
     public partial class DatabaseLayer : IDatabaseLayer
     {
+        // ✅ GET ALL
+
+        public async Task UpdateBrandImage(int id, Brandmodel model)
+        {
+            using var con = new NpgsqlConnection(this.DbConnection);
+            await con.OpenAsync();
+
+            using var cmd = new NpgsqlCommand(
+                @"UPDATE brand 
+          SET brandimage=@image, publicid=@publicid 
+          WHERE id=@id", con);
+
+            cmd.Parameters.AddWithValue("@image", model.BrandImage ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@publicid", model.PublicId ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@id", id);
+
+            await cmd.ExecuteNonQueryAsync();
+        }
         public async Task<List<Brandmodel>> GetBrand()
         {
-            List<Brandmodel> brands = new List<Brandmodel>();
+            var list = new List<Brandmodel>();
 
-            using (var connection = new NpgsqlConnection(this.DbConnection))
+            using var con = new NpgsqlConnection(this.DbConnection);
+            await con.OpenAsync();
+
+            using var cmd = new NpgsqlCommand(
+                "SELECT id, brandname, brandimage, publicid, isactive FROM brand",
+                con);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
             {
-                await connection.OpenAsync();
-
-                using (var command = new NpgsqlCommand(
-                    "SELECT id, brandname, brandimage, isactive FROM brand",
-                    connection))
+                list.Add(new Brandmodel
                 {
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        while (await reader.ReadAsync())
-                        {
-                            Brandmodel brand = new Brandmodel
-                            {
-                                Id = reader.GetInt32(reader.GetOrdinal("id")),
-                                BrandName = reader["brandname"]?.ToString(),
-                                BrandImage = reader["brandimage"]?.ToString(),
-                                IsActive = reader.GetBoolean(reader.GetOrdinal("isactive"))
-                            };
-
-                            brands.Add(brand);
-                        }
-                    }
-                }
+                    Id = reader.GetInt32(0),
+                    BrandName = reader["brandname"]?.ToString(),
+                    BrandImage = reader["brandimage"]?.ToString(),
+                    PublicId = reader["publicid"]?.ToString(), // 🔥 FIX
+                    IsActive = reader.GetBoolean(4)
+                });
             }
 
-            return brands;
+            return list;
         }
 
+        // ✅ ADD (ONLY BASIC DATA)
         public async Task<Brandmodel> Add(Brandmodel model)
         {
-            using (var connection = new NpgsqlConnection(this.DbConnection))
-            {
-                await connection.OpenAsync();
+            using var con = new NpgsqlConnection(this.DbConnection);
+            await con.OpenAsync();
 
-                using (var command = new NpgsqlCommand(
-                    "INSERT INTO brand (brandname, brandimage, isactive) VALUES (@brandname, @brandimage, @isactive) RETURNING id",
-                    connection))
-                {
-                    command.Parameters.AddWithValue("@brandname", model.BrandName);
+            using var cmd = new NpgsqlCommand(
+                "INSERT INTO brand (brandname, isactive) VALUES (@name, @active) RETURNING id",
+                con);
 
-                    // Handle NULL image properly
-                    command.Parameters.AddWithValue(
-                        "@brandimage",
-                        string.IsNullOrEmpty(model.BrandImage)
-                            ? (object)DBNull.Value
-                            : model.BrandImage
-                    );
+            cmd.Parameters.AddWithValue("@name", model.BrandName);
+            cmd.Parameters.AddWithValue("@active", model.IsActive);
 
-                    command.Parameters.AddWithValue("@isactive", model.IsActive);
-
-                    var id = (int)await command.ExecuteScalarAsync();
-                    model.Id = id;
-                }
-            }
+            model.Id = (int)await cmd.ExecuteScalarAsync();
 
             return model;
         }
 
-        public async Task<IActionResult> Edit(int id, [FromForm] Brandmodel model)
+        // ✅ EDIT (🔥 MOST IMPORTANT FIX)
+        public async Task<bool> Edit(int id, Brandmodel model)
         {
-            using (var connection = new NpgsqlConnection(this.DbConnection))
-            {
-                await connection.OpenAsync();
+            using var con = new NpgsqlConnection(this.DbConnection);
+            await con.OpenAsync();
 
-                using (var command = new NpgsqlCommand(
-                    "UPDATE brand SET brandname = @brandname, brandimage = @brandimage, isactive = @isactive WHERE id = @id",
-                    connection))
-                {
-                    command.Parameters.AddWithValue("@brandname", model.BrandName);
-                    command.Parameters.AddWithValue("@brandimage", model.BrandImage);
-                    command.Parameters.AddWithValue("@isactive", model.IsActive);
-                    command.Parameters.AddWithValue("@id", id);
+            using var cmd = new NpgsqlCommand(
+                @"UPDATE brand 
+                  SET brandname=@name, 
+                      brandimage=@image,
+                      publicid=@publicid,
+                      isactive=@active 
+                  WHERE id=@id",
+                con);
 
-                    var rowsAffected = await command.ExecuteNonQueryAsync();
+            cmd.Parameters.AddWithValue("@name", model.BrandName);
+            cmd.Parameters.AddWithValue("@image", (object?)model.BrandImage ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@publicid", (object?)model.PublicId ?? DBNull.Value); // 🔥 FIX
+            cmd.Parameters.AddWithValue("@active", model.IsActive);
+            cmd.Parameters.AddWithValue("@id", id);
 
-                    if (rowsAffected > 0)
-                        return new OkObjectResult(model);
-                    else
-                        return new NotFoundResult();
-                }
-            }
+            return await cmd.ExecuteNonQueryAsync() > 0;
         }
+
+        // ✅ GET BY ID
         public async Task<Brandmodel> GetBrandById(int id)
         {
-            using (var connection = new NpgsqlConnection(this.DbConnection))
+            using var con = new NpgsqlConnection(this.DbConnection);
+            await con.OpenAsync();
+
+            using var cmd = new NpgsqlCommand(
+                "SELECT id, brandname, brandimage, publicid, isactive FROM brand WHERE id=@id",
+                con);
+
+            cmd.Parameters.AddWithValue("@id", id);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
             {
-                await connection.OpenAsync();
-                using (var command = new NpgsqlCommand(
-                    "SELECT id, brandname, brandimage, isactive FROM brand WHERE id = @id",
-                    connection))
+                return new Brandmodel
                 {
-                    command.Parameters.AddWithValue("@id", id);
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        if (await reader.ReadAsync())
-                        {
-                            return new Brandmodel
-                            {
-                                Id = reader.GetInt32(reader.GetOrdinal("id")),
-                                BrandName = reader["brandname"]?.ToString(),
-                                BrandImage = reader["brandimage"]?.ToString(),
-                                IsActive = reader.GetBoolean(reader.GetOrdinal("isactive"))
-                            };
-                        }
-                    }
-                }
+                    Id = reader.GetInt32(0),
+                    BrandName = reader["brandname"]?.ToString(),
+                    BrandImage = reader["brandimage"]?.ToString(),
+                    PublicId = reader["publicid"]?.ToString(), // 🔥 FIX
+                    IsActive = reader.GetBoolean(4)
+                };
             }
-            return null; // Return null if not found
+
+            return null;
         }
 
-        public async Task<IActionResult> DeleteBrand(int id)
+        // ✅ DELETE
+        public async Task<bool> DeleteBrand(int id)
         {
-            using (var connection = new NpgsqlConnection(this.DbConnection))
-            {
-                await connection.OpenAsync();
+            using var con = new NpgsqlConnection(this.DbConnection);
+            await con.OpenAsync();
 
-                using (var command = new NpgsqlCommand(
-                    "DELETE FROM brand WHERE id = @id",
-                    connection))
-                {
-                    command.Parameters.AddWithValue("@id", id);
+            using var cmd = new NpgsqlCommand(
+                "DELETE FROM brand WHERE id=@id",
+                con);
 
-                    var rowsAffected = await command.ExecuteNonQueryAsync();
+            cmd.Parameters.AddWithValue("@id", id);
 
-                    if (rowsAffected > 0)
-                        return new OkResult();
-                    else
-                        return new NotFoundResult();
-                }
-            }
+            return await cmd.ExecuteNonQueryAsync() > 0;
         }
     }
 }

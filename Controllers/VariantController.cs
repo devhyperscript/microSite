@@ -19,6 +19,7 @@ namespace firstproject.Controllers
             _cloudinary = cloudinary;
         }
 
+        // ✅ GET
         [HttpGet("getvariant")]
         public async Task<IActionResult> GetVariant()
         {
@@ -33,33 +34,44 @@ namespace firstproject.Controllers
         {
             try
             {
-                // ✅ Main Image
+                // ✅ MAIN IMAGE
                 if (variant.ImageFile != null)
                 {
-                    var imageUrl = await _cloudinary.UploadImageAsync(variant.ImageFile);
-                    variant.Image = imageUrl;
+                    var upload = await _cloudinary.UploadImageAsync(variant.ImageFile, "variants");
+
+                    variant.Image = upload.Url;
+                    variant.PublicId = upload.PublicId;
                 }
 
-                // ✅ Gallery Images
+                // ✅ GALLERY IMAGES
                 if (variant.GalleryFiles != null && variant.GalleryFiles.Length > 0)
                 {
                     var galleryList = new List<string>();
+                    var publicIds = new List<string>();
 
                     foreach (var file in variant.GalleryFiles)
                     {
                         if (file != null)
                         {
-                            var imageUrl = await _cloudinary.UploadImageAsync(file);
-                            galleryList.Add(imageUrl);
+                            var upload = await _cloudinary.UploadImageAsync(file, "variants");
+
+                            galleryList.Add(upload.Url);
+                            publicIds.Add(upload.PublicId);
                         }
                     }
 
                     variant.ImageGallery = galleryList.ToArray();
+                    variant.GalleryPublicIds = publicIds.ToArray();
                 }
 
                 var result = await _businessLayer.AddVariant(variant);
 
-                return Ok(new { message = "Variant added", data = result });
+                return Ok(new
+                {
+                    status = true,
+                    message = "Variant added successfully",
+                    data = result
+                });
             }
             catch (Exception ex)
             {
@@ -77,40 +89,72 @@ namespace firstproject.Controllers
             if (existing == null)
                 return NotFound(new { message = "Variant not found" });
 
-            // ✅ Main Image
+            // ✅ MAIN IMAGE UPDATE
             if (variant.ImageFile != null)
             {
-                var imageUrl = await _cloudinary.UploadImageAsync(variant.ImageFile);
-                variant.Image = imageUrl;
+                // delete old
+                if (!string.IsNullOrEmpty(existing.PublicId))
+                {
+                    await _cloudinary.DeleteImageAsync(existing.PublicId);
+                }
+
+                var upload = await _cloudinary.UploadImageAsync(variant.ImageFile, "variants");
+
+                variant.Image = upload.Url;
+                variant.PublicId = upload.PublicId;
             }
             else
             {
                 variant.Image = existing.Image;
+                variant.PublicId = existing.PublicId;
             }
 
-            // ✅ Gallery Images
+            // ✅ GALLERY UPDATE
             if (variant.GalleryFiles != null && variant.GalleryFiles.Length > 0)
             {
+                // delete old gallery
+                if (existing.GalleryPublicIds != null)
+                {
+                    foreach (var pid in existing.GalleryPublicIds)
+                    {
+                        if (!string.IsNullOrEmpty(pid))
+                        {
+                            await _cloudinary.DeleteImageAsync(pid);
+                        }
+                    }
+                }
+
                 var galleryList = new List<string>();
+                var publicIds = new List<string>();
 
                 foreach (var file in variant.GalleryFiles)
                 {
                     if (file != null)
                     {
-                        var imageUrl = await _cloudinary.UploadImageAsync(file);
-                        galleryList.Add(imageUrl);
+                        var upload = await _cloudinary.UploadImageAsync(file, "variants");
+
+                        galleryList.Add(upload.Url);
+                        publicIds.Add(upload.PublicId);
                     }
                 }
 
                 variant.ImageGallery = galleryList.ToArray();
+                variant.GalleryPublicIds = publicIds.ToArray();
             }
             else
             {
                 variant.ImageGallery = existing.ImageGallery;
+                variant.GalleryPublicIds = existing.GalleryPublicIds;
             }
 
             var result = await _businessLayer.UpdateVariant(id, variant);
-            return Ok(result);
+
+            return Ok(new
+            {
+                status = true,
+                message = "Variant updated successfully",
+                data = result
+            });
         }
 
         // 🔥 DELETE VARIANT
@@ -123,11 +167,31 @@ namespace firstproject.Controllers
             if (existing == null)
                 return NotFound(new { message = "Variant not found" });
 
+            // 🔥 delete main image
+            if (!string.IsNullOrEmpty(existing.PublicId))
+            {
+                await _cloudinary.DeleteImageAsync(existing.PublicId);
+            }
+
+            // 🔥 delete gallery
+            if (existing.GalleryPublicIds != null)
+            {
+                foreach (var pid in existing.GalleryPublicIds)
+                {
+                    if (!string.IsNullOrEmpty(pid))
+                    {
+                        await _cloudinary.DeleteImageAsync(pid);
+                    }
+                }
+            }
+
             await _businessLayer.DeleteVariant(id);
 
-            // ❗ Cloudinary delete optional (advanced)
-
-            return Ok(new { message = "Variant deleted" });
+            return Ok(new
+            {
+                status = true,
+                message = "Variant deleted successfully"
+            });
         }
     }
 }

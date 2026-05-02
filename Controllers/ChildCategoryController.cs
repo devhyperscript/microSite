@@ -19,6 +19,7 @@ namespace firstproject.Controllers
             _cloudinary = cloudinary;
         }
 
+        // ✅ GET
         [HttpGet("get")]
         public async Task<IActionResult> Get()
         {
@@ -26,7 +27,7 @@ namespace firstproject.Controllers
             return Ok(result);
         }
 
-        // 🔥 ADD
+        // ✅ ADD (🔥 FIXED)
         [HttpPost("add")]
         [Authorize]
         public async Task<IActionResult> Add([FromForm] childCategoryModel model)
@@ -35,12 +36,11 @@ namespace firstproject.Controllers
             {
                 if (model.ImageFile != null)
                 {
-                    var imageUrl = await _cloudinary.UploadImageAsync(model.ImageFile);
-                    model.ChildCategoryImageUrl = imageUrl;
-                }
-                else
-                {
-                    model.ChildCategoryImageUrl = null;
+                    // 🔥 upload in childcategory folder
+                    var upload = await _cloudinary.UploadImageAsync(model.ImageFile, "childcategory");
+
+                    model.ChildCategoryImageUrl = upload.Url;
+                    model.PublicId = upload.PublicId;
                 }
 
                 var result = await _businessLayer.Add(model);
@@ -62,7 +62,7 @@ namespace firstproject.Controllers
             }
         }
 
-        // 🔥 EDIT
+        // ✅ EDIT (🔥 FIXED)
         [HttpPut("edit/{id}")]
         [Authorize]
         public async Task<IActionResult> Edit(int id, [FromForm] childCategoryModel model)
@@ -80,12 +80,22 @@ namespace firstproject.Controllers
 
             if (model.ImageFile != null)
             {
-                var imageUrl = await _cloudinary.UploadImageAsync(model.ImageFile);
-                model.ChildCategoryImageUrl = imageUrl;
+                // 🔥 delete old image
+                if (!string.IsNullOrEmpty(existingData.PublicId))
+                {
+                    await _cloudinary.DeleteImageAsync(existingData.PublicId);
+                }
+
+                // 🔥 upload new image
+                var upload = await _cloudinary.UploadImageAsync(model.ImageFile, "childcategory");
+
+                model.ChildCategoryImageUrl = upload.Url;
+                model.PublicId = upload.PublicId;
             }
             else
             {
                 model.ChildCategoryImageUrl = existingData.ChildCategoryImageUrl;
+                model.PublicId = existingData.PublicId;
             }
 
             await _businessLayer.Edit(id, model);
@@ -97,7 +107,7 @@ namespace firstproject.Controllers
             });
         }
 
-        // 🔥 DELETE
+        // ✅ DELETE (🔥 FIXED)
         [HttpDelete("delete/{id}")]
         [Authorize]
         public async Task<IActionResult> Delete(int id)
@@ -113,9 +123,13 @@ namespace firstproject.Controllers
                 });
             }
 
-            await _businessLayer.DeleteChildCategory(id);
+            // 🔥 delete image from cloudinary
+            if (!string.IsNullOrEmpty(existingData.PublicId))
+            {
+                await _cloudinary.DeleteImageAsync(existingData.PublicId);
+            }
 
-            // ❗ Cloudinary delete (optional advanced)
+            await _businessLayer.DeleteChildCategory(id);
 
             return Ok(new
             {
