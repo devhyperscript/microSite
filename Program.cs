@@ -16,21 +16,28 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ✅ DB Connection
+// ===================== DB =====================
 var connectionString = builder.Configuration.GetConnectionString("AppDbContextConnection")
-    ?? throw new InvalidOperationException("Connection string 'AppDbContextConnection' not found.");
+    ?? throw new InvalidOperationException("Connection string not found.");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// ✅ Identity Setup
+// ===================== IDENTITY =====================
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
-    options.SignIn.RequireConfirmedAccount = true)
-    .AddEntityFrameworkStores<AppDbContext>();
+{
+    options.SignIn.RequireConfirmedAccount = true;
+})
+.AddEntityFrameworkStores<AppDbContext>();
 
-// ✅ JWT Authentication
+// ===================== JWT =====================
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"];
+
+var secretKey = jwtSettings["SecretKey"]
+    ?? throw new Exception("JWT SecretKey missing");
+
+var issuer = jwtSettings["Issuer"] ?? "firstproject";
+var audience = jwtSettings["Audience"] ?? "firstproject-client";
 
 builder.Services.AddAuthentication(options =>
 {
@@ -39,75 +46,86 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    options.RequireHttpsMetadata = false; // DEV FIX
+    options.SaveToken = true;
+
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+
+        ValidIssuer = issuer,
+        ValidAudience = audience,
+
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(secretKey)
+        ),
+
+        ClockSkew = TimeSpan.Zero // 🔥 important for expiry issues
     };
 });
 
-// ✅ CORS
+// ===================== CORS =====================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy
-            .WithOrigins(
-                "http://localhost",
+        policy.WithOrigins(
                 "http://localhost:5173",
+                "http://localhost:3000",
+                "http://localhost",
                 "http://microsite.workarya.com",
                 "https://microsite.workarya.com"
             )
-            .AllowAnyMethod()
             .AllowAnyHeader()
+            .AllowAnyMethod()
             .AllowCredentials();
     });
 });
 
-// ✅ ForwardedHeaders
+// ===================== FORWARDED HEADERS =====================
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedProto;
+
     options.KnownNetworks.Clear();
     options.KnownProxies.Clear();
 });
 
-// ✅ Session
+// ===================== SESSION =====================
 builder.Services.AddDistributedMemoryCache();
+
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromDays(30);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
-    options.Cookie.SameSite = SameSiteMode.None;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+
+    options.Cookie.SameSite = SameSiteMode.None;   // 🔥 FIX for cross-site JWT/cookies
+    options.Cookie.SecurePolicy = CookieSecurePolicy.None; // dev
 });
 
-// ✅ Controllers
+// ===================== CONTROLLERS =====================
 builder.Services.AddControllersWithViews();
 
-
-// 🔥🔥🔥 CLOUDINARY CONFIG (IMPORTANT)
+// ===================== CLOUDINARY =====================
 builder.Services.Configure<CloudinarySettings>(
     builder.Configuration.GetSection("CloudinarySettings"));
 
 builder.Services.AddScoped<CloudinaryService>();
 
-
-// ✅ Custom Services
+// ===================== CUSTOM SERVICES =====================
 builder.Services.AddScoped<IDatabaseLayer, DatabaseLayer>();
 builder.Services.AddScoped<IBusinessLayer, BusinessLayer>();
 builder.Services.AddScoped<JwtHelper>();
 
-
 var app = builder.Build();
 
-// ✅ Middleware Order
+// ===================== PIPELINE =====================
 app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
@@ -116,19 +134,23 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// ❌ DON'T FORCE HTTPS in dev
+// app.UseHttpsRedirection();
+
 app.UseRouting();
+
+// 🔥 MUST BE BEFORE AUTH
 app.UseCors("AllowFrontend");
+
 app.UseSession();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ✅ Routes
-app.MapStaticAssets();
+app.MapControllers();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
+    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.Run();
