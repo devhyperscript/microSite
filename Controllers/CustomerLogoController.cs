@@ -108,10 +108,22 @@ namespace firstproject.Controllers
                     message = "Customer logo not found"
                 });
 
+            // 🔥 DEBUG (optional)
+            Console.WriteLine("PUBLIC ID: " + existing.PublicId);
+
             // 🔥 DELETE IMAGE FROM CLOUDINARY
             if (!string.IsNullOrEmpty(existing.PublicId))
             {
-                await _cloudinary.DeleteImageAsync(existing.PublicId);
+                var deleted = await _cloudinary.DeleteImageAsync(existing.PublicId);
+
+                if (!deleted)
+                {
+                    return BadRequest(new
+                    {
+                        status = false,
+                        message = "Cloudinary image delete failed"
+                    });
+                }
             }
 
             await _businessLayer.DeleteCustomerLogo(id);
