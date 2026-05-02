@@ -98,6 +98,7 @@ namespace firstproject.Models
         public string? BrandImage { get; set; }
         public IFormFile? ImageFile { get; set; }
         public bool IsActive { get; set; } = true;
+        public string? PublicId { get; set; }
     }
 
     public class customermodel
