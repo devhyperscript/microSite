@@ -387,17 +387,46 @@ public async Task<IActionResult> GetAllOrders()
             // Order items lo
             var items = new List<object>();
             using (var itemCmd = new NpgsqlCommand(@"
-                SELECT 
-                    id, product_id, product_name, image,
-                    price, discount_price, quantity, total_price, created_at
-                FROM order_items
-                WHERE order_id = @OrderId
-                ORDER BY id ASC;
-            ", connection))
+SELECT 
+    oi.id,
+    oi.product_id,
+    oi.product_name,
+    oi.image,
+    oi.price,
+    oi.discount_price,
+    oi.quantity,
+    oi.total_price,
+
+    b.brandname,
+
+    -- Size names
+    (
+        SELECT array_agg(s.size_name)
+        FROM sizes s
+        WHERE s.id = ANY(p.sizeids)
+    ) AS sizenames,
+
+    -- Color names
+    (
+        SELECT array_agg(cl.colorname)
+        FROM color cl
+        WHERE cl.id = ANY(p.colorids)
+    ) AS colornames
+
+FROM order_items oi
+JOIN product p ON p.id = oi.product_id
+
+LEFT JOIN brand b
+    ON b.id = p.brandid
+
+WHERE oi.order_id = @OrderId
+ORDER BY oi.id ASC;
+", connection))
             {
                 itemCmd.Parameters.AddWithValue("@OrderId", orderId);
 
                 using var itemReader = await itemCmd.ExecuteReaderAsync();
+
                 while (await itemReader.ReadAsync())
                 {
                     items.Add(new
@@ -405,11 +434,15 @@ public async Task<IActionResult> GetAllOrders()
                         id = itemReader.GetInt32("id"),
                         productId = itemReader.GetInt32("product_id"),
                         productName = itemReader.GetString("product_name"),
-                        image = itemReader.IsDBNull("image") ? null : itemReader.GetString("image"),
+                        image = itemReader["image"]?.ToString(),
                         price = itemReader.GetDecimal("price"),
-                        discountPrice = itemReader.IsDBNull("discount_price") ? (decimal?)null : itemReader.GetDecimal("discount_price"),
+                        discountPrice = itemReader["discount_price"] as decimal?,
                         quantity = itemReader.GetInt32("quantity"),
-                        totalPrice = itemReader.GetDecimal("total_price")
+                        totalPrice = itemReader.GetDecimal("total_price"),
+
+                        brandName = itemReader["brandname"]?.ToString(),
+                        sizeNames = itemReader["sizenames"] as string[],
+                        colorNames = itemReader["colornames"] as string[]
                     });
                 }
             }
