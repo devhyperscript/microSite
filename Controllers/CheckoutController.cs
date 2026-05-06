@@ -1,6 +1,7 @@
 ﻿using firstproject.Helpers;
 using firstproject.Models;
 using firstproject.Models.BusinessLayer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace firstproject.Controllers
@@ -155,6 +156,7 @@ namespace firstproject.Controllers
         }
 
         [HttpGet("admin/allorders")]
+        [Authorize]
 
         public async Task<IActionResult> GetAllOrders()
         {
