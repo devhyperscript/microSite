@@ -339,21 +339,25 @@ public async Task<IActionResult> GetAllOrders()
             using var connection = new NpgsqlConnection(this.DbConnection);
             await connection.OpenAsync();
 
-            // Order check karo
+            // =========================
+            // ORDER DETAILS
+            // =========================
             object? order = null;
+
             using (var cmd = new NpgsqlCommand(@"
-                SELECT 
-                    id, userid, first_name, last_name, email, mobile,
-                    pincode, address, city, state, country,
-                    total_items, grand_total, payment_method, order_status, created_at
-                FROM orders
-                WHERE id = @OrderId AND userid = @UserId;
-            ", connection))
+        SELECT 
+            id, userid, first_name, last_name, email, mobile,
+            pincode, address, city, state, country,
+            total_items, grand_total, payment_method, order_status, created_at
+        FROM orders
+        WHERE id = @OrderId AND userid = @UserId;
+    ", connection))
             {
                 cmd.Parameters.AddWithValue("@OrderId", orderId);
                 cmd.Parameters.AddWithValue("@UserId", userId);
 
                 using var reader = await cmd.ExecuteReaderAsync();
+
                 if (await reader.ReadAsync())
                 {
                     order = new
@@ -378,50 +382,62 @@ public async Task<IActionResult> GetAllOrders()
             }
 
             if (order == null)
+            {
                 return new NotFoundObjectResult(new
                 {
                     status = false,
                     message = "Order nahi mila."
                 });
+            }
 
-            // Order items lo
+            // =========================
+            // ORDER ITEMS WITH FULL JOIN
+            // =========================
             var items = new List<object>();
+
             using (var itemCmd = new NpgsqlCommand(@"
-SELECT 
-    oi.id,
-    oi.product_id,
-    oi.product_name,
-    oi.image,
-    oi.price,
-    oi.discount_price,
-    oi.quantity,
-    oi.total_price,
+        SELECT 
+            oi.id,
+            oi.product_id,
+            oi.product_name,
+            oi.image,
+            oi.price,
+            oi.discount_price,
+            oi.quantity,
+            oi.total_price,
 
-    b.brandname,
+            b.brandname,
 
-    -- Size names
-    (
-        SELECT array_agg(s.size_name)
-        FROM sizes s
-        WHERE s.id = ANY(p.sizeids)
-    ) AS sizenames,
+            c.""Name"" AS categoryname,
+            sc.""subCategoryName"" AS subcategoryname,
+            cc.""ChildCategoryName"" AS childcategoryname,
 
-    -- Color names
-    (
-        SELECT array_agg(cl.colorname)
-        FROM color cl
-        WHERE cl.id = ANY(p.colorids)
-    ) AS colornames
+            -- Size names
+            (
+                SELECT array_agg(s.size_name)
+                FROM sizes s
+                WHERE s.id = ANY(p.sizeids)
+            ) AS sizenames,
 
-FROM order_items oi
-JOIN product p ON p.id = oi.product_id
+            -- Color names
+            (
+                SELECT array_agg(cl.colorname)
+                FROM color cl
+                WHERE cl.id = ANY(p.colorids)
+            ) AS colornames
 
-LEFT JOIN brand b
-    ON b.id = p.brandid
+        FROM order_items oi
+        JOIN product p ON p.id = oi.product_id
 
-WHERE oi.order_id = @OrderId
-ORDER BY oi.id ASC;
-", connection))
+        LEFT JOIN brand b ON b.id = p.brandid
+
+        LEFT JOIN category c ON c.""Id"" = p.categoryid
+        LEFT JOIN subcategory sc ON sc.""Id"" = p.subcategoryid
+        LEFT JOIN childcategory cc ON cc.""Id"" = p.childcategoryid
+
+        WHERE oi.order_id = @OrderId
+        ORDER BY oi.id ASC;
+    ", connection))
             {
                 itemCmd.Parameters.AddWithValue("@OrderId", orderId);
 
@@ -441,12 +457,21 @@ ORDER BY oi.id ASC;
                         totalPrice = itemReader.GetDecimal("total_price"),
 
                         brandName = itemReader["brandname"]?.ToString(),
+
+                        // ✅ CATEGORY DATA
+                        categoryName = itemReader["categoryname"]?.ToString(),
+                        subCategoryName = itemReader["subcategoryname"]?.ToString(),
+                        childCategoryName = itemReader["childcategoryname"]?.ToString(),
+
                         sizeNames = itemReader["sizenames"] as string[],
                         colorNames = itemReader["colornames"] as string[]
                     });
                 }
             }
 
+            // =========================
+            // FINAL RESPONSE
+            // =========================
             return new OkObjectResult(new
             {
                 status = true,
