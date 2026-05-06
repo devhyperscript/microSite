@@ -264,27 +264,37 @@ namespace firstproject.Models
 
     public class CartItemModel
     {
-        // 🔑 Cart Info
         public int id { get; set; }
-        public int? userid { get; set; }      // nullable (guest ke liye)
-        public string? ipaddress { get; set; } // guest user ke liye
+        public int? userid { get; set; }
+        public string? ipaddress { get; set; }
 
         public int productid { get; set; }
+        public int? variantid { get; set; }
         public int quantity { get; set; } = 1;
 
-        // 🛍 Product Info (JOIN se aayega)
+        // Product info
         public string? ProductName { get; set; }
         public string? Slug { get; set; }
-        public string? Image { get; set; }
+        public string? ProductImage { get; set; }      // ✅ product ka original image
 
-        public decimal Price { get; set; }
-        public decimal? DiscountPrice { get; set; }
+        // Variant info
+        public string? VariantName { get; set; }
+        public string? VariantImage { get; set; }       // ✅ variant ka image
+        public int[]? VariantSizeIds { get; set; }
+        public int[]? VariantColorIds { get; set; }
 
-        // 💰 Calculated
+        // Final image to show (variant image if exists, else product image)
+        public string? Image => VariantImage ?? ProductImage;  // ✅ computed
+
+        // Pricing
+        public decimal ProductPrice { get; set; }           // product original price
+        public decimal? ProductDiscountPrice { get; set; }  // product discount price
+        public decimal? VariantPrice { get; set; }          // variant price (if variant)
+
+        // Final effective price
+        public decimal EffectivePrice => VariantPrice ?? ProductDiscountPrice ?? ProductPrice;
+
         public decimal totalprice { get; set; }
-
-
-        // 📅 Meta
         public DateTime? createdat { get; set; }
     }
 

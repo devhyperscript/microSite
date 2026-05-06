@@ -17,26 +17,21 @@ namespace firstproject.Controllers
             _jwtHelper = jwtHelper;
         }
 
-        // ===================== USER OR GUEST =====================
         private int? GetUserIdFromToken()
         {
             var authHeader = Request.Headers["Authorization"].FirstOrDefault();
-
             if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
                 return null;
-
             return _jwtHelper.GetUserIdFromToken(authHeader.Replace("Bearer ", "").Trim());
         }
 
         private string GetGuestId()
         {
             var guestId = Request.Cookies["guest_id"];
-
             if (!string.IsNullOrEmpty(guestId))
                 return guestId;
 
             guestId = "guest_" + Guid.NewGuid().ToString("N");
-
             Response.Cookies.Append("guest_id", guestId, new CookieOptions
             {
                 HttpOnly = true,
@@ -45,7 +40,6 @@ namespace firstproject.Controllers
                 Secure = false,
                 IsEssential = true
             });
-
             return guestId;
         }
 
@@ -53,17 +47,18 @@ namespace firstproject.Controllers
         {
             var userId = GetUserIdFromToken();
             var guestId = userId.HasValue ? null : GetGuestId();
-
             return (userId, guestId);
         }
 
         // ===================== ADD TO CART =====================
         [HttpPost("add")]
-        public async Task<IActionResult> AddToCart([FromForm] int productId)
+        public async Task<IActionResult> AddToCart(
+            [FromForm] int productId,
+            [FromForm] int? variantId = null)
         {
             var (userId, guestId) = GetIdentity();
 
-            var result = await _businessLayer.AddToCart(userId, guestId, productId);
+            var result = await _businessLayer.AddToCart(userId, guestId, productId, variantId);
 
             if (result == "AlreadyInCart")
                 return Ok(new { status = false, message = "Product already in cart" });
@@ -105,14 +100,17 @@ namespace firstproject.Controllers
 
         // ===================== UPDATE QTY =====================
         [HttpPut("updatequantity")]
-        public async Task<IActionResult> UpdateQuantity([FromForm] int productId, [FromForm] int change)
+        public async Task<IActionResult> UpdateQuantity(
+            [FromForm] int productId,
+            [FromForm] int change,
+            [FromForm] int? variantId = null)
         {
             if (change != 1 && change != -1)
                 return BadRequest(new { status = false, message = "Invalid change value" });
 
             var (userId, guestId) = GetIdentity();
 
-            await _businessLayer.UpdateCartQuantity(userId, guestId, productId, change);
+            await _businessLayer.UpdateCartQuantity(userId, guestId, productId, change, variantId);
 
             var items = await _businessLayer.GetCart(userId, guestId);
             decimal grandTotal = items.Sum(x => x.totalprice);
@@ -139,20 +137,21 @@ namespace firstproject.Controllers
         public async Task<IActionResult> ClearCart()
         {
             var (userId, guestId) = GetIdentity();
-
             return await _businessLayer.ClearCart(userId, guestId);
         }
 
         // ===================== MULTIPLE ADD =====================
         [HttpPost("add-multiple")]
-        public async Task<IActionResult> AddMultipleToCart([FromForm] List<int> productIds)
+        public async Task<IActionResult> AddMultipleToCart(
+            [FromForm] List<int> productIds,
+            [FromForm] int? variantId = null)   // ✅ variantId optional
         {
             if (productIds == null || !productIds.Any())
                 return BadRequest(new { status = false, message = "ProductIds required" });
 
             var (userId, guestId) = GetIdentity();
 
-            var result = await _businessLayer.AddMultipleToCart(userId, guestId, productIds);
+            await _businessLayer.AddMultipleToCart(userId, guestId, productIds, variantId);
 
             var items = await _businessLayer.GetCart(userId, guestId);
             decimal grandTotal = items.Sum(x => x.totalprice);
