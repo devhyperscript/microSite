@@ -32,7 +32,7 @@ namespace firstproject.Models.DatabaseLayer
             {
                 await connection.OpenAsync();
 
-                // ✅ 1. GET PRODUCTS
+                // ✅ 1. GET PRODUCT
                 using (var command = new NpgsqlCommand(@"
         SELECT 
             p.*,
