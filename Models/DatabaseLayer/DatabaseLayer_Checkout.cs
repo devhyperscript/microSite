@@ -409,7 +409,7 @@ public async Task<IActionResult> GetAllOrders()
             b.brandname,
 
             c.""Name"" AS categoryname,
-            sc.""subCategoryName"" AS subcategoryname,
+            sc.""SubCategoryName"" AS SubCategoryName,
             cc.""ChildCategoryName"" AS childcategoryname,
 
             -- Size names
@@ -469,7 +469,7 @@ public async Task<IActionResult> GetAllOrders()
                 }
             }
 
-            // =========================
+            // ============================
             // FINAL RESPONSE
             // =========================
             return new OkObjectResult(new

@@ -27,7 +27,7 @@ CREATE TABLE category (
 CREATE TABLE subCategory (
     "Id" SERIAL PRIMARY KEY,
     "CategoryId" INT NOT NULL,
-    "subCategoryName" VARCHAR(150) NOT NULL,
+    "SubCategoryName" VARCHAR(150) NOT NULL,
     "subCategoryImageUrl" TEXT,
     "Status" BOOLEAN DEFAULT TRUE,
     "CreatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
