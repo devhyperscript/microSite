@@ -228,7 +228,7 @@ public async Task<IActionResult> GetAllOrders()
 
                     itemCmd.Parameters.AddWithValue("@OrderId", orderId);
                     itemCmd.Parameters.AddWithValue("@ProductId", item.productid);
-                    itemCmd.Parameters.AddWithValue("@ProductName", item.ProductName);
+                    //itemCmd.Parameters.AddWithValue("@ProductName", item.ProductName);
                     itemCmd.Parameters.AddWithValue("@Image", (object?)item.Image ?? DBNull.Value);
                     //itemCmd.Parameters.AddWithValue("@Price", item.Price);
                     //itemCmd.Parameters.AddWithValue("@DiscountPrice", (object?)item.DiscountPrice ?? DBNull.Value);

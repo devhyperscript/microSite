@@ -1,23 +1,28 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using NpgsqlTypes;
-using System.Data;
 
 namespace firstproject.Models.DatabaseLayer
+
+
 {
+
     public partial interface IDatabaseLayer
     {
         Task<List<CartItemModel>> GetCart(int? userId, string? ipAddress);
-        Task<string> AddToCart(int? userId, string? ipAddress, int productId, int? variantId = null);
+        Task<string> AddToCart(int? userId, string? ipAddress, int? productId, int? variantId = null);
         Task<string> UpdateCartQuantity(int? userId, string? ipAddress, int productId, int change, int? variantId = null);
         Task MergeGuestCart(int userId, string ipAddress);
         Task<IActionResult> DeleteCartItem(int id);
         Task<IActionResult> ClearCart(int? userId, string? ipAddress);
-        Task<string> AddMultipleToCart(int? userId, string? ipAddress, List<int> productIds, int? variantId = null); // ✅
+        Task<string> AddMultipleToCart(int? userId, string? ipAddress, List<int> productIds, int? variantId = null);
     }
-
     public partial class DatabaseLayer : IDatabaseLayer
     {
+      
+
+        
+
         private static NpgsqlParameter NullableInt(string name, int? value)
         {
             return new NpgsqlParameter(name, NpgsqlDbType.Integer)
@@ -27,322 +32,234 @@ namespace firstproject.Models.DatabaseLayer
         }
 
         // =========================
-        // ✅ GET CART
+        // ✅ GET CART (FINAL)
         // =========================
         public async Task<List<CartItemModel>> GetCart(int? userId, string? ipAddress)
         {
-            var cartList = new List<CartItemModel>();
+            var list = new List<CartItemModel>();
 
-            using var connection = new NpgsqlConnection(this.DbConnection);
-            await connection.OpenAsync();
+            using var con = new NpgsqlConnection(DbConnection);
+            await con.OpenAsync();
 
-            string whereClause = userId.HasValue
-                ? "WHERE c.userid = @UserId"
-                : "WHERE c.ipaddress = @IpAddress";
+            string where = userId.HasValue
+                ? "c.userid = @UserId"
+                : "c.ipaddress = @Ip";
 
             string query = $@"
-                SELECT
-                    c.id,
-                    c.userid,
-                    c.ipaddress,
-                    c.productid,
-                    c.variantid,
-                    c.quantity,
-                    c.createdat,
+SELECT
+    c.id, c.userid, c.ipaddress,
+    c.productid, c.variantid,
+    c.quantity, c.createdat,
 
-                    p.productname,
-                    p.slug,
-                    p.image                                          AS productimage,
-                    p.price                                          AS productprice,
-                    p.discountprice                                  AS productdiscountprice,
+    CASE 
+        WHEN c.variantid IS NOT NULL THEN v.variantname
+        ELSE p.productname
+    END AS name,
 
-                    v.variantname,
-                    v.image                                          AS variantimage,
-                    v.sizeid                                         AS variantsizeids,
-                    v.colorid                                        AS variantcolorids,
-                    v.price                                          AS variantprice,
+    CASE 
+        WHEN c.variantid IS NOT NULL THEN v.image
+        ELSE p.image
+    END AS image,
 
-                    (c.quantity * COALESCE(v.price, p.discountprice, p.price)) AS totalprice
+    -- ✅ SALE PRICE
+    CASE 
+        WHEN c.variantid IS NOT NULL 
+            THEN COALESCE(v.discountprice, v.price)
+        ELSE 
+            COALESCE(p.discountprice, p.price)
+    END AS price,
 
-                FROM addtocart c
-                INNER JOIN product p ON p.id = c.productid
-                LEFT  JOIN variant v ON v.id = c.variantid
-                {whereClause}
-                ORDER BY c.createdat DESC;
-            ";
+    v.sizeid,
+    v.colorid,
 
-            using var command = new NpgsqlCommand(query, connection);
+    -- ✅ TOTAL
+    (c.quantity *
+        CASE 
+            WHEN c.variantid IS NOT NULL 
+                THEN COALESCE(v.discountprice, v.price)
+            ELSE 
+                COALESCE(p.discountprice, p.price)
+        END
+    ) AS totalprice
+
+FROM addtocart c
+LEFT JOIN product p ON p.id = c.productid
+LEFT JOIN variant v ON v.id = c.variantid
+
+WHERE {where}
+ORDER BY c.createdat DESC";
+
+            using var cmd = new NpgsqlCommand(query, con);
 
             if (userId.HasValue)
-                command.Parameters.AddWithValue("@UserId", userId.Value);
-            else if (!string.IsNullOrEmpty(ipAddress))
-                command.Parameters.AddWithValue("@IpAddress", ipAddress);
+                cmd.Parameters.Add("@UserId", NpgsqlDbType.Integer).Value = userId.Value;
             else
-                return cartList;
+                cmd.Parameters.Add("@Ip", NpgsqlDbType.Text).Value = ipAddress ?? "";
 
-            using var reader = await command.ExecuteReaderAsync();
+            using var reader = await cmd.ExecuteReaderAsync();
+
             while (await reader.ReadAsync())
             {
-                cartList.Add(new CartItemModel
+                list.Add(new CartItemModel
                 {
-                    id = reader.GetInt32("id"),
-                    userid = reader.IsDBNull("userid") ? null : reader.GetInt32("userid"),
-                    ipaddress = reader.IsDBNull("ipaddress") ? null : reader.GetString("ipaddress"),
-                    productid = reader.GetInt32("productid"),
-                    variantid = reader.IsDBNull("variantid") ? null : reader.GetInt32("variantid"),
-                    quantity = reader.GetInt32("quantity"),
-                    createdat = reader.IsDBNull("createdat") ? null : reader.GetDateTime("createdat"),
+                    id = reader.GetInt32(0),
+                    userid = reader.IsDBNull(1) ? null : reader.GetInt32(1),
+                    ipaddress = reader.IsDBNull(2) ? null : reader.GetString(2),
 
-                    ProductName = reader.GetString("productname"),
-                    Slug = reader.IsDBNull("slug") ? null : reader.GetString("slug"),
-                    ProductImage = reader.IsDBNull("productimage") ? null : reader.GetString("productimage"),
-                    ProductPrice = reader.GetDecimal("productprice"),
-                    ProductDiscountPrice = reader.IsDBNull("productdiscountprice") ? null : reader.GetDecimal("productdiscountprice"),
+                    productid = reader.GetInt32(3),
+                    variantid = reader.IsDBNull(4) ? null : reader.GetInt32(4),
 
-                    VariantName = reader.IsDBNull("variantname") ? null : reader.GetString("variantname"),
-                    VariantImage = reader.IsDBNull("variantimage") ? null : reader.GetString("variantimage"),
-                    VariantSizeIds = reader.IsDBNull("variantsizeids") ? null : (int[])reader.GetValue("variantsizeids"),
-                    VariantColorIds = reader.IsDBNull("variantcolorids") ? null : (int[])reader.GetValue("variantcolorids"),
-                    VariantPrice = reader.IsDBNull("variantprice") ? null : reader.GetDecimal("variantprice"),
+                    quantity = reader.GetInt32(5),
+                    createdat = reader.IsDBNull(6) ? null : reader.GetDateTime(6),
 
-                    totalprice = reader.GetDecimal("totalprice"),
+                    Name = reader.GetString(7),
+                    Image = reader.IsDBNull(8) ? null : reader.GetString(8),
+
+                    Price = reader.GetDecimal(9),
+
+                    VariantSizeIds = reader.IsDBNull(10) ? null : (int[])reader.GetValue(10),
+                    VariantColorIds = reader.IsDBNull(11) ? null : (int[])reader.GetValue(11),
+
+                    totalprice = reader.GetDecimal(12)
                 });
             }
 
-            return cartList;
+            return list;
         }
 
         // =========================
-        // ✅ ADD TO CART
+        // ✅ ADD TO CART (FINAL)
         // =========================
-        public async Task<string> AddToCart(int? userId, string? ipAddress, int productId, int? variantId = null)
+        public async Task<string> AddMultipleToCart(int? userId, string? ipAddress, List<int> productIds, int? variantId = null)
         {
-            using var connection = new NpgsqlConnection(this.DbConnection);
-            await connection.OpenAsync();
+            using var con = new NpgsqlConnection(this.DbConnection);
+            await con.OpenAsync();
 
-            string checkQuery = userId.HasValue
-                ? @"SELECT COUNT(1) FROM addtocart
-                    WHERE userid    = @UserId
-                      AND productid = @ProductId
-                      AND (variantid = @VariantId OR (variantid IS NULL AND @VariantId IS NULL))"
-                : @"SELECT COUNT(1) FROM addtocart
-                    WHERE ipaddress = @IpAddress
-                      AND productid = @ProductId
-                      AND (variantid = @VariantId OR (variantid IS NULL AND @VariantId IS NULL))";
-
-            using (var checkCmd = new NpgsqlCommand(checkQuery, connection))
+            foreach (var productId in productIds)
             {
-                checkCmd.Parameters.AddWithValue("@ProductId", productId);
-                checkCmd.Parameters.Add(NullableInt("@VariantId", variantId));
+                int? resolvedVariantId = null;
 
-                if (userId.HasValue)
-                    checkCmd.Parameters.AddWithValue("@UserId", userId.Value);
+                // ✅ 1. If variantId दिया है → verify करो
+                if (variantId.HasValue)
+                {
+                    var verifyCmd = new NpgsqlCommand(@"
+                SELECT id FROM variant 
+                WHERE id=@vid AND productid=@pid LIMIT 1", con);
+
+                    verifyCmd.Parameters.AddWithValue("@vid", variantId.Value);
+                    verifyCmd.Parameters.AddWithValue("@pid", productId);
+
+                    var result = await verifyCmd.ExecuteScalarAsync();
+
+                    if (result != null)
+                        resolvedVariantId = variantId.Value;
+                }
                 else
-                    checkCmd.Parameters.AddWithValue("@IpAddress", ipAddress ?? "");
+                {
+                    // ✅ 2. Product ka first variant auto pick
+                    var varCmd = new NpgsqlCommand(@"
+                SELECT id FROM variant 
+                WHERE productid=@pid 
+                ORDER BY id ASC LIMIT 1", con);
 
-                var count = (long)(await checkCmd.ExecuteScalarAsync() ?? 0);
-                if (count > 0) return "AlreadyInCart";
+                    varCmd.Parameters.AddWithValue("@pid", productId);
+
+                    var result = await varCmd.ExecuteScalarAsync();
+
+                    if (result != null)
+                        resolvedVariantId = Convert.ToInt32(result);
+                }
+
+                // ✅ 3. Duplicate check
+                var check = new NpgsqlCommand(@"
+            SELECT COUNT(*) FROM addtocart
+            WHERE (userid=@uid OR ipaddress=@ip)
+            AND productid=@pid
+            AND (variantid=@vid OR (variantid IS NULL AND @vid IS NULL))", con);
+
+                check.Parameters.AddWithValue("@uid", (object?)userId ?? DBNull.Value);
+                check.Parameters.AddWithValue("@ip", (object?)ipAddress ?? DBNull.Value);
+                check.Parameters.AddWithValue("@pid", productId);
+                check.Parameters.Add(NullableInt("@vid", resolvedVariantId));
+
+                var exists = (long)(await check.ExecuteScalarAsync() ?? 0);
+                if (exists > 0) continue;
+
+                // ✅ 4. FINAL PRICE LOGIC (🔥 MOST IMPORTANT)
+                var insert = new NpgsqlCommand(@"
+            INSERT INTO addtocart(userid, ipaddress, productid, variantid, quantity, price)
+            VALUES(@uid,@ip,@pid,@vid,1,
+                CASE 
+                    WHEN @vid IS NOT NULL THEN 
+                        COALESCE(
+                            (SELECT discountprice FROM variant WHERE id=@vid),
+                            (SELECT price FROM variant WHERE id=@vid)
+                        )
+                    ELSE 
+                        (SELECT discountprice FROM product WHERE id=@pid)
+                END)", con);
+
+                insert.Parameters.AddWithValue("@uid", (object?)userId ?? DBNull.Value);
+                insert.Parameters.AddWithValue("@ip", (object?)ipAddress ?? DBNull.Value);
+                insert.Parameters.AddWithValue("@pid", productId);
+                insert.Parameters.Add(NullableInt("@vid", resolvedVariantId));
+
+                await insert.ExecuteNonQueryAsync();
             }
 
-            string insertQuery = userId.HasValue
-                ? @"INSERT INTO addtocart (userid, productid, variantid, quantity, price)
-                    SELECT @UserId, @ProductId, @VariantId, 1,
-                        CASE
-                            WHEN @VariantId IS NOT NULL
-                                THEN (SELECT price FROM variant WHERE id = @VariantId)
-                            ELSE COALESCE(p.discountprice, p.price)
-                        END
-                    FROM product p WHERE p.id = @ProductId;"
-                : @"INSERT INTO addtocart (ipaddress, productid, variantid, quantity, price)
-                    SELECT @IpAddress, @ProductId, @VariantId, 1,
-                        CASE
-                            WHEN @VariantId IS NOT NULL
-                                THEN (SELECT price FROM variant WHERE id = @VariantId)
-                            ELSE COALESCE(p.discountprice, p.price)
-                        END
-                    FROM product p WHERE p.id = @ProductId;";
-
-            using var insertCmd = new NpgsqlCommand(insertQuery, connection);
-            insertCmd.Parameters.AddWithValue("@ProductId", productId);
-            insertCmd.Parameters.Add(NullableInt("@VariantId", variantId));
-
-            if (userId.HasValue)
-                insertCmd.Parameters.AddWithValue("@UserId", userId.Value);
-            else
-                insertCmd.Parameters.AddWithValue("@IpAddress", ipAddress ?? "");
-
-            await insertCmd.ExecuteNonQueryAsync();
             return "Success";
         }
 
         // =========================
         // ✅ ADD MULTIPLE
-        // Case 1: variantId null  → har product ka auto first variant pick
-        // Case 2: variantId given → verify karo product ka hai, tab use karo
         // =========================
-        public async Task<string> AddMultipleToCart(int? userId, string? ipAddress, List<int> productIds, int? variantId = null)
-        {
-            using var connection = new NpgsqlConnection(this.DbConnection);
-            await connection.OpenAsync();
-
-            foreach (var productId in productIds)
-            {
-                int? resolvedVariantId;
-
-                if (variantId.HasValue)
-                {
-                    // ✅ Case 2: variantId diya — verify karo ye is product ka hai
-                    using var verifyCmd = new NpgsqlCommand(@"
-                        SELECT id FROM variant
-                        WHERE id = @VariantId AND productid = @ProductId AND isactive = TRUE
-                        LIMIT 1", connection);
-
-                    verifyCmd.Parameters.AddWithValue("@VariantId", variantId.Value);
-                    verifyCmd.Parameters.AddWithValue("@ProductId", productId);
-
-                    var verified = await verifyCmd.ExecuteScalarAsync();
-                    resolvedVariantId = (verified != null && verified != DBNull.Value)
-                        ? variantId.Value   // valid → use karo
-                        : null;             // invalid → base price
-                }
-                else
-                {
-                    // ✅ Case 1: variantId nahi → auto first active variant
-                    using var varCmd = new NpgsqlCommand(@"
-                        SELECT id FROM variant
-                        WHERE productid = @ProductId AND isactive = TRUE
-                        ORDER BY id ASC LIMIT 1", connection);
-
-                    varCmd.Parameters.AddWithValue("@ProductId", productId);
-                    var result = await varCmd.ExecuteScalarAsync();
-
-                    resolvedVariantId = (result != null && result != DBNull.Value)
-                        ? Convert.ToInt32(result)
-                        : null;
-                }
-
-                // NULL-safe duplicate check
-                string checkQuery = userId.HasValue
-                    ? @"SELECT COUNT(1) FROM addtocart
-                        WHERE userid    = @UserId
-                          AND productid = @ProductId
-                          AND (variantid = @VariantId OR (variantid IS NULL AND @VariantId IS NULL))"
-                    : @"SELECT COUNT(1) FROM addtocart
-                        WHERE ipaddress = @IpAddress
-                          AND productid = @ProductId
-                          AND (variantid = @VariantId OR (variantid IS NULL AND @VariantId IS NULL))";
-
-                using (var checkCmd = new NpgsqlCommand(checkQuery, connection))
-                {
-                    checkCmd.Parameters.AddWithValue("@ProductId", productId);
-                    checkCmd.Parameters.Add(NullableInt("@VariantId", resolvedVariantId));
-
-                    if (userId.HasValue)
-                        checkCmd.Parameters.AddWithValue("@UserId", userId.Value);
-                    else
-                        checkCmd.Parameters.AddWithValue("@IpAddress", ipAddress ?? "");
-
-                    var count = (long)(await checkCmd.ExecuteScalarAsync() ?? 0);
-                    if (count > 0) continue;
-                }
-
-                // Insert
-                string insertQuery = userId.HasValue
-                    ? @"INSERT INTO addtocart (userid, productid, variantid, quantity, price)
-                        SELECT @UserId, @ProductId, @VariantId, 1,
-                            CASE
-                                WHEN @VariantId IS NOT NULL
-                                    THEN (SELECT price FROM variant WHERE id = @VariantId)
-                                ELSE COALESCE(p.discountprice, p.price)
-                            END
-                        FROM product p WHERE p.id = @ProductId;"
-                    : @"INSERT INTO addtocart (ipaddress, productid, variantid, quantity, price)
-                        SELECT @IpAddress, @ProductId, @VariantId, 1,
-                            CASE
-                                WHEN @VariantId IS NOT NULL
-                                    THEN (SELECT price FROM variant WHERE id = @VariantId)
-                                ELSE COALESCE(p.discountprice, p.price)
-                            END
-                        FROM product p WHERE p.id = @ProductId;";
-
-                using var insertCmd = new NpgsqlCommand(insertQuery, connection);
-                insertCmd.Parameters.AddWithValue("@ProductId", productId);
-                insertCmd.Parameters.Add(NullableInt("@VariantId", resolvedVariantId));
-
-                if (userId.HasValue)
-                    insertCmd.Parameters.AddWithValue("@UserId", userId.Value);
-                else
-                    insertCmd.Parameters.AddWithValue("@IpAddress", ipAddress ?? "");
-
-                await insertCmd.ExecuteNonQueryAsync();
-            }
-
-            return "Success";
-        }
+       
 
         // =========================
         // ✅ UPDATE QUANTITY
         // =========================
         public async Task<string> UpdateCartQuantity(int? userId, string? ipAddress, int productId, int change, int? variantId = null)
         {
-            using var connection = new NpgsqlConnection(this.DbConnection);
-            await connection.OpenAsync();
+            using var con = new NpgsqlConnection(DbConnection);
+            await con.OpenAsync();
 
-            string whereClause = userId.HasValue
-                ? @"userid    = @UserId
-                    AND productid = @ProductId
-                    AND (variantid = @VariantId OR (variantid IS NULL AND @VariantId IS NULL))"
-                : @"ipaddress = @IpAddress
-                    AND productid = @ProductId
-                    AND (variantid = @VariantId OR (variantid IS NULL AND @VariantId IS NULL))";
+            var cmd = new NpgsqlCommand(@"
+UPDATE addtocart
+SET quantity = quantity + @change
+WHERE (userid=@uid OR ipaddress=@ip)
+AND productid=@pid
+AND (variantid=@vid OR (variantid IS NULL AND @vid IS NULL));
 
-            string query = $@"
-                WITH updated AS (
-                    UPDATE addtocart
-                    SET quantity = quantity + @Change
-                    WHERE {whereClause}
-                    RETURNING id, quantity
-                )
-                DELETE FROM addtocart
-                WHERE id IN (SELECT id FROM updated WHERE quantity <= 0);
-            ";
+DELETE FROM addtocart WHERE quantity <= 0;", con);
 
-            using var command = new NpgsqlCommand(query, connection);
-            command.Parameters.AddWithValue("@Change", change);
-            command.Parameters.AddWithValue("@ProductId", productId);
-            command.Parameters.Add(NullableInt("@VariantId", variantId));
+            cmd.Parameters.AddWithValue("@change", change);
+            cmd.Parameters.AddWithValue("@uid", (object?)userId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@ip", (object?)ipAddress ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@pid", productId);
+            cmd.Parameters.Add(NullableInt("@vid", variantId));
 
-            if (userId.HasValue)
-                command.Parameters.AddWithValue("@UserId", userId.Value);
-            else
-                command.Parameters.AddWithValue("@IpAddress", ipAddress ?? "");
+            await cmd.ExecuteNonQueryAsync();
 
-            await command.ExecuteNonQueryAsync();
             return "Success";
         }
 
         // =========================
-        // ✅ MERGE GUEST CART → USER
+        // ✅ MERGE GUEST CART
         // =========================
         public async Task MergeGuestCart(int userId, string ipAddress)
         {
-            using var connection = new NpgsqlConnection(this.DbConnection);
-            await connection.OpenAsync();
+            using var con = new NpgsqlConnection(DbConnection);
+            await con.OpenAsync();
 
-            using var command = new NpgsqlCommand(@"
-                INSERT INTO addtocart (userid, productid, variantid, quantity, price)
-                SELECT @UserId, productid, variantid, quantity, price
-                FROM addtocart
-                WHERE ipaddress = @IpAddress
-                ON CONFLICT (userid, productid, COALESCE(variantid, -1))
-                DO UPDATE SET quantity = addtocart.quantity + EXCLUDED.quantity;
+            var cmd = new NpgsqlCommand(@"
+UPDATE addtocart
+SET userid=@uid
+WHERE ipaddress=@ip;", con);
 
-                DELETE FROM addtocart WHERE ipaddress = @IpAddress;
-            ", connection);
+            cmd.Parameters.AddWithValue("@uid", userId);
+            cmd.Parameters.AddWithValue("@ip", ipAddress);
 
-            command.Parameters.AddWithValue("@UserId", userId);
-            command.Parameters.AddWithValue("@IpAddress", ipAddress);
-            await command.ExecuteNonQueryAsync();
+            await cmd.ExecuteNonQueryAsync();
         }
 
         // =========================
@@ -350,18 +267,17 @@ namespace firstproject.Models.DatabaseLayer
         // =========================
         public async Task<IActionResult> DeleteCartItem(int id)
         {
-            using var connection = new NpgsqlConnection(this.DbConnection);
-            await connection.OpenAsync();
+            using var con = new NpgsqlConnection(DbConnection);
+            await con.OpenAsync();
 
-            using var command = new NpgsqlCommand(
-                "DELETE FROM addtocart WHERE id = @Id", connection);
-            command.Parameters.AddWithValue("@Id", id);
+            var cmd = new NpgsqlCommand("DELETE FROM addtocart WHERE id=@id", con);
+            cmd.Parameters.AddWithValue("@id", id);
 
-            int rows = await command.ExecuteNonQueryAsync();
+            int rows = await cmd.ExecuteNonQueryAsync();
 
             return rows > 0
-                ? new OkObjectResult(new { status = true, message = "Cart item deleted" })
-                : new NotFoundObjectResult(new { status = false, message = "Cart item not found" });
+                ? new OkObjectResult(new { status = true, message = "Deleted" })
+                : new NotFoundObjectResult(new { status = false });
         }
 
         // =========================
@@ -369,28 +285,19 @@ namespace firstproject.Models.DatabaseLayer
         // =========================
         public async Task<IActionResult> ClearCart(int? userId, string? ipAddress)
         {
-            using var connection = new NpgsqlConnection(this.DbConnection);
-            await connection.OpenAsync();
+            using var con = new NpgsqlConnection(DbConnection);
+            await con.OpenAsync();
 
-            string whereClause = userId.HasValue
-                ? "userid = @UserId"
-                : "ipaddress = @IpAddress";
+            var cmd = new NpgsqlCommand(@"
+DELETE FROM addtocart
+WHERE userid=@uid OR ipaddress=@ip", con);
 
-            using var command = new NpgsqlCommand(
-                $"DELETE FROM addtocart WHERE {whereClause}", connection);
+            cmd.Parameters.AddWithValue("@uid", (object?)userId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@ip", (object?)ipAddress ?? DBNull.Value);
 
-            if (userId.HasValue)
-                command.Parameters.AddWithValue("@UserId", userId.Value);
-            else
-                command.Parameters.AddWithValue("@IpAddress", ipAddress ?? "");
+            await cmd.ExecuteNonQueryAsync();
 
-            int rows = await command.ExecuteNonQueryAsync();
-
-            return new OkObjectResult(new
-            {
-                status = true,
-                message = $"{rows} cart items cleared"
-            });
+            return new OkObjectResult(new { status = true });
         }
     }
 }
