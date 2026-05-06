@@ -8,6 +8,8 @@ namespace firstproject.Models.BusinessLayer
         Task<IActionResult> PlaceOrder(int userId, string guestId, CheckoutRequestModel request);
         Task<IActionResult> GetMyOrders(int userId);
         Task<IActionResult> GetOrderDetail(int userId, int orderId);
+
+        Task<IActionResult> GetAllOrders();
     }
 
     public partial class BusinessLayer : IBusinessLayer
@@ -41,6 +43,11 @@ namespace firstproject.Models.BusinessLayer
         public async Task<IActionResult> GetOrderDetail(int userId, int orderId)
         {
             return await _databaseLayer.GetOrderDetail(userId, orderId);
+        }
+
+        public async Task<IActionResult> GetAllOrders()
+        {
+            return await _databaseLayer.GetAllOrders();
         }
     }
 }

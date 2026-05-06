@@ -9,10 +9,170 @@ namespace firstproject.Models.DatabaseLayer
         Task<IActionResult> PlaceOrder(int userId, CheckoutRequestModel request, List<CartItemModel> items, decimal grandTotal);
         Task<IActionResult> GetMyOrders(int userId);
         Task<IActionResult> GetOrderDetail(int userId, int orderId);
+
+        Task<IActionResult> GetAllOrders();
     }
 
     public partial class DatabaseLayer : IDatabaseLayer
     {
+        // Get All orders
+   
+
+public async Task<IActionResult> GetAllOrders()
+        {
+            using var connection = new NpgsqlConnection(this.DbConnection);
+
+            await connection.OpenAsync();
+
+            var orders = new List<object>();
+
+            using var cmd = new NpgsqlCommand(@"
+
+        SELECT
+
+            -- ORDER TABLE
+            o.id,
+            o.userid,
+
+            o.first_name,
+            o.last_name,
+            o.email,
+            o.mobile,
+            o.pincode,
+            o.address,
+            o.city,
+            o.state,
+            o.country,
+
+            o.total_items,
+            o.grand_total,
+            o.payment_method,
+            o.order_status,
+            o.created_at,
+
+            -- USER TABLE
+            u.firstname as user_firstname,
+            u.lastname as user_lastname,
+            u.email as user_email
+
+        FROM orders o
+
+        LEFT JOIN users u
+            ON u.id = o.userid
+
+        ORDER BY o.created_at DESC
+
+    ", connection);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                orders.Add(new
+                {
+                    // ====================================
+                    // ORDER DETAIL
+                    // ====================================
+
+                    id = reader.GetInt32(
+                        reader.GetOrdinal("id")
+                    ),
+
+                    userId = reader.GetInt32(
+                        reader.GetOrdinal("userid")
+                    ),
+
+                    firstName = reader.GetString(
+                        reader.GetOrdinal("first_name")
+                    ),
+
+                    lastName = reader.GetString(
+                        reader.GetOrdinal("last_name")
+                    ),
+
+                    email = reader.GetString(
+                        reader.GetOrdinal("email")
+                    ),
+
+                    mobile = reader.GetString(
+                        reader.GetOrdinal("mobile")
+                    ),
+
+                    pincode = reader.GetString(
+                        reader.GetOrdinal("pincode")
+                    ),
+
+                    address = reader.GetString(
+                        reader.GetOrdinal("address")
+                    ),
+
+                    city = reader.GetString(
+                        reader.GetOrdinal("city")
+                    ),
+
+                    state = reader.GetString(
+                        reader.GetOrdinal("state")
+                    ),
+
+                    country = reader.GetString(
+                        reader.GetOrdinal("country")
+                    ),
+
+                    totalItems = reader.GetInt32(
+                        reader.GetOrdinal("total_items")
+                    ),
+
+                    grandTotal = reader.GetDecimal(
+                        reader.GetOrdinal("grand_total")
+                    ),
+
+                    paymentMethod = reader.GetString(
+                        reader.GetOrdinal("payment_method")
+                    ),
+
+                    orderStatus = reader.GetString(
+                        reader.GetOrdinal("order_status")
+                    ),
+
+                    createdAt = reader.GetDateTime(
+                        reader.GetOrdinal("created_at")
+                    ),
+
+                    // ====================================
+                    // USER DETAIL
+                    // ====================================
+
+                    user = new
+                    {
+                        firstName =
+                            reader["user_firstname"] == DBNull.Value
+                            ? null
+                            : reader["user_firstname"]?.ToString(),
+
+                        lastName =
+                            reader["user_lastname"] == DBNull.Value
+                            ? null
+                            : reader["user_lastname"]?.ToString(),
+
+                        email =
+                            reader["user_email"] == DBNull.Value
+                            ? null
+                            : reader["user_email"]?.ToString()
+                    }
+                });
+            }
+
+            return new OkObjectResult(new
+            {
+                status = true,
+                totalOrders = orders.Count,
+                data = orders
+            });
+        }
+
+
+
+
         // ✅ PLACE ORDER
         public async Task<IActionResult> PlaceOrder(
             int userId,

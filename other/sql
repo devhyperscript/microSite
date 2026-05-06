@@ -206,3 +206,56 @@ CREATE TABLE addtocart (
     -- Important: same product ek user ke liye sirf ek baar
     UNIQUE(userid, productid)
 );
+
+CREATE TABLE blogs (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    content TEXT NOT NULL,
+    featured_image TEXT,
+    status VARCHAR(20) DEFAULT 'draft', -- draft / published
+    views INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    userid INTEGER NOT NULL REFERENCES users(id),
+    
+    -- Address
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL,
+    mobile VARCHAR(15) NOT NULL,
+    pincode VARCHAR(10) NOT NULL,
+    address TEXT NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    state VARCHAR(100) NOT NULL,
+    country VARCHAR(100) NOT NULL DEFAULT 'India',
+    
+    -- Order Info
+    total_items INTEGER NOT NULL,
+    grand_total DECIMAL(10,2) NOT NULL,
+    payment_method VARCHAR(50) NOT NULL DEFAULT 'COD',
+    order_status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    product_id INTEGER NOT NULL REFERENCES product(id),
+    product_name VARCHAR(255) NOT NULL,
+    image VARCHAR(500),
+    price DECIMAL(10,2) NOT NULL,
+    discount_price DECIMAL(10,2),
+    quantity INTEGER NOT NULL,
+    total_price DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -153,5 +153,12 @@ namespace firstproject.Controllers
 
             return await _businessLayer.GetOrderDetail(userId.Value, orderId);
         }
+
+        [HttpGet("admin/allorders")]
+
+        public async Task<IActionResult> GetAllOrders()
+        {
+            return await _businessLayer.GetAllOrders();
+        }   
     }
 }
