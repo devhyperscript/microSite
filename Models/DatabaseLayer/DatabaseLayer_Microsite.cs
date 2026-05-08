@@ -35,6 +35,24 @@ namespace firstproject.Models.DatabaseLayer
     {
         //private readonly object _config;
         //========================== MicroSite =================================== 
+        private async Task EnsureAssignProductSchema()
+        {
+            using var conn = new NpgsqlConnection(DbConnection);
+            await conn.OpenAsync();
+
+            const string sql = @"
+CREATE TABLE IF NOT EXISTS assign_product (
+    id SERIAL PRIMARY KEY,
+    microsite_id BIGINT NOT NULL REFERENCES microsites(id) ON DELETE CASCADE,
+    product_id INT NOT NULL REFERENCES product(id) ON DELETE CASCADE,
+    status BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE (microsite_id, product_id)
+);";
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            await cmd.ExecuteNonQueryAsync();
+        }
 
         public async Task<List<MicrositeModel>> GetMicrosite()
         {
@@ -859,24 +877,54 @@ namespace firstproject.Models.DatabaseLayer
         ////================================================================Assign Products MicroSites Start ===============================================================
         public async Task<bool> AssignProduct(long micrositeId, long productId)
         {
+            if (micrositeId <= 0 || productId <= 0)
+                return false;
+
+            await EnsureAssignProductSchema();
             using var conn = new NpgsqlConnection(DbConnection);
             await conn.OpenAsync();
 
+            const string validateSql = @"
+SELECT
+    EXISTS(SELECT 1 FROM microsites WHERE id = @micrositeId) AS microsite_exists,
+    EXISTS(SELECT 1 FROM product WHERE id = @productId) AS product_exists;";
+
+            using (var validateCmd = new NpgsqlCommand(validateSql, conn))
+            {
+                validateCmd.Parameters.AddWithValue("@micrositeId", micrositeId);
+                validateCmd.Parameters.AddWithValue("@productId", productId);
+                using var reader = await validateCmd.ExecuteReaderAsync();
+                if (!await reader.ReadAsync())
+                    return false;
+
+                var micrositeExists = reader.GetBoolean(0);
+                var productExists = reader.GetBoolean(1);
+                if (!micrositeExists || !productExists)
+                    return false;
+            }
+
             var query = @"INSERT INTO assign_product (microsite_id, product_id)
-                  VALUES (@micrositeId, @productId)";
+                  VALUES (@micrositeId, @productId)
+                  ON CONFLICT (microsite_id, product_id)
+                  DO UPDATE SET status = TRUE";
 
-            using var cmd = new NpgsqlCommand(query, conn);
-
-            cmd.Parameters.AddWithValue("@micrositeId", micrositeId);
-            cmd.Parameters.AddWithValue("@productId", productId);
-
-            var result = await cmd.ExecuteNonQueryAsync();
-
-            return result > 0;
+            try
+            {
+                using var cmd = new NpgsqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@micrositeId", micrositeId);
+                cmd.Parameters.AddWithValue("@productId", productId);
+                var result = await cmd.ExecuteNonQueryAsync();
+                return result > 0;
+            }
+            catch (PostgresException)
+            {
+                return false;
+            }
         }
 
         public async Task<List<object>> GetAssignedProducts()
         {
+            await EnsureAssignProductSchema();
             var list = new List<object>();
 
             using var conn = new NpgsqlConnection(DbConnection);
@@ -893,25 +941,26 @@ SELECT
     ap.created_at AS assign_created_at,
 
     p.id AS product_id,
-    p.name AS product_name,
+    p.productname AS product_name,
     p.slug,
     p.description,
     p.price,
-    p.discount_price,
+    p.discountprice AS discount_price,
     p.stock,
-    p.status AS product_status,
-    p.created_at AS product_created_at,
+    p.isactive AS product_status,
+    p.createdat AS product_created_at,
 
-    b.name AS brand_name,
-    c.name AS category_name,
+    b.brandname AS brand_name,
+    c.""Name"" AS category_name,
 
-    p.images
+    p.image,
+    p.imagegallery
 
 FROM assign_product ap
 LEFT JOIN microsites m ON ap.microsite_id = m.id
-LEFT JOIN products p ON ap.product_id = p.id
-LEFT JOIN brands b ON p.brand_id = b.id
-LEFT JOIN categories c ON p.category_id = c.id
+LEFT JOIN product p ON ap.product_id = p.id
+LEFT JOIN brand b ON p.brandid = b.id
+LEFT JOIN category c ON p.categoryid = c.""Id""
 
 ORDER BY ap.id DESC
 ";
@@ -968,10 +1017,17 @@ ORDER BY ap.id DESC
                         BrandName = reader["brand_name"]?.ToString(),
                         CategoryName = reader["category_name"]?.ToString(),
 
-                        // ✅ Images from same table
-                        Images = reader["images"] != DBNull.Value
-        ? ((string[])reader["images"]).ToList()
-        : new List<string>()
+                        // ✅ Image + gallery merged for frontend display
+                        Images = new List<string>()
+                            .Concat(
+                                reader["image"] != DBNull.Value && !string.IsNullOrWhiteSpace(reader["image"]?.ToString())
+                                    ? new List<string> { reader["image"]?.ToString() ?? "" }
+                                    : new List<string>())
+                            .Concat(
+                                reader["imagegallery"] != DBNull.Value
+                                    ? ((string[])reader["imagegallery"]).ToList()
+                                    : new List<string>())
+                            .ToList()
                     }
                 });
             }
@@ -981,6 +1037,7 @@ ORDER BY ap.id DESC
 
         public async Task<bool> DeleteAssignedProduct(long id)
         {
+            await EnsureAssignProductSchema();
             using var conn = new NpgsqlConnection(DbConnection);
             await conn.OpenAsync();
 
@@ -996,6 +1053,7 @@ ORDER BY ap.id DESC
 
         public async Task<bool> UpdateAssignedProduct(long id, long micrositeId, long productId, bool status)
         {
+            await EnsureAssignProductSchema();
             using var conn = new NpgsqlConnection(DbConnection);
             await conn.OpenAsync();
 

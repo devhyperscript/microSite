@@ -67,6 +67,15 @@ CREATE TABLE IF NOT EXISTS microsite_orders (
     status TEXT NOT NULL DEFAULT 'Placed',
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS assign_product (
+    id SERIAL PRIMARY KEY,
+    microsite_id BIGINT NOT NULL REFERENCES microsites(id) ON DELETE CASCADE,
+    product_id INT NOT NULL REFERENCES product(id) ON DELETE CASCADE,
+    status BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    UNIQUE (microsite_id, product_id)
+);
 ";
             using var cmd = new NpgsqlCommand(sql, connection);
             await cmd.ExecuteNonQueryAsync();
