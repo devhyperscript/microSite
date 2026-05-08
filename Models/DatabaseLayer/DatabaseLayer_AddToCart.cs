@@ -130,6 +130,15 @@ ORDER BY c.createdat DESC";
         // =========================
         // ✅ ADD TO CART (FINAL)
         // =========================
+        public async Task<string> AddToCart(int? userId, string? ipAddress, int? productId, int? variantId = null)
+        {
+            // Keep behaviour consistent by reusing the existing multi-add logic.
+            if (!productId.HasValue)
+                return "Invalid product";
+
+            return await AddMultipleToCart(userId, ipAddress, new List<int> { productId.Value }, variantId);
+        }
+
         public async Task<string> AddMultipleToCart(int? userId, string? ipAddress, List<int> productIds, int? variantId = null)
         {
             using var con = new NpgsqlConnection(this.DbConnection);

@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 
 using System.Text;
 
@@ -111,6 +112,31 @@ builder.Services.AddSession(options =>
 
 // ===================== CONTROLLERS =====================
 builder.Services.AddControllersWithViews();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("microsite-v1", new OpenApiInfo
+    {
+        Title = "MicroSite APIs",
+        Version = "v1",
+        Description = "Microsite admin + public APIs"
+    });
+
+    var jwtSecurityScheme = new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Description = "Enter: Bearer {your JWT token}",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    };
+
+    options.AddSecurityDefinition("Bearer", jwtSecurityScheme);
+    options.DocInclusionPredicate((docName, apiDesc) =>
+        string.Equals(docName, apiDesc.GroupName, StringComparison.OrdinalIgnoreCase));
+
+});
 
 // ===================== CLOUDINARY =====================
 builder.Services.Configure<CloudinarySettings>(
@@ -132,6 +158,16 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
+}
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/microsite-v1/swagger.json", "MicroSite APIs v1");
+        options.RoutePrefix = "swagger";
+    });
 }
 
 // ❌ DON'T FORCE HTTPS in dev
