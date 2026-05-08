@@ -133,8 +133,6 @@ builder.Services.AddSwaggerGen(options =>
     };
 
     options.AddSecurityDefinition("Bearer", jwtSecurityScheme);
-    options.DocInclusionPredicate((docName, apiDesc) =>
-        string.Equals(docName, apiDesc.GroupName, StringComparison.OrdinalIgnoreCase));
 
 });
 

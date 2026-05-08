@@ -265,28 +265,49 @@ namespace firstproject.Models
     public class CartItemModel
     {
         public int id { get; set; }
+
         public int? userid { get; set; }
+
         public string? ipaddress { get; set; }
 
-        public int productid { get; set; }
-        public int? variantid { get; set; }
+        public int? productid { get; set; }
+
+        // ✅ VARIANT ARRAY
+        public int[]? variantids { get; set; }
 
         public int quantity { get; set; }
 
+        // ✅ PRODUCT DATA
         public string? Name { get; set; }
+
         public string? Image { get; set; }
 
-        // ✅ MRP
+        // ✅ VARIANT DATA ARRAY
+        public List<VariantCartModel>? Variants { get; set; }
+
+        // ✅ FINAL
         public decimal Price { get; set; }
 
-        // ✅ SALE PRICE
-        public decimal DiscountPrice { get; set; }
-
-        public int[]? VariantSizeIds { get; set; }
-        public int[]? VariantColorIds { get; set; }
-
         public decimal totalprice { get; set; }
+
         public DateTime? createdat { get; set; }
+    }
+
+    public class VariantCartModel
+    {
+        public int id { get; set; }
+
+        public string? variantname { get; set; }
+
+        public int[]? sizeid { get; set; }
+
+        public int[]? colorid { get; set; }
+
+        public decimal price { get; set; }
+
+        public string? image { get; set; }
+
+        public string[]? imagegallery { get; set; }
     }
     public class AddToCartRequest
     {
