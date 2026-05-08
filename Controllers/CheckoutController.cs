@@ -72,18 +72,7 @@ namespace firstproject.Controllers
                 totalItems = items.Count,
                 grandTotal = grandTotal,
                 cartItems = items,
-                addressForm = new
-                {
-                    first_name = "",
-                    last_name = "",
-                    email = "",
-                    mobile = "",
-                    pincode = "",
-                    address = "",
-                    city = "",
-                    state = "",
-                    country = "India"
-                }
+               
             });
         }
 

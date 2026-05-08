@@ -173,76 +173,365 @@ public async Task<IActionResult> GetAllOrders()
 
 
 
-        // ✅ PLACE ORDER
         public async Task<IActionResult> PlaceOrder(
             int userId,
             CheckoutRequestModel request,
             List<CartItemModel> items,
-            decimal grandTotal)
+            decimal grandTotal
+        )
         {
-            using var connection = new NpgsqlConnection(this.DbConnection);
+            using var connection =
+                new NpgsqlConnection(this.DbConnection);
+
             await connection.OpenAsync();
 
-            using var transaction = await connection.BeginTransactionAsync();
+            using var transaction =
+                await connection.BeginTransactionAsync();
 
             try
             {
-                // Step 1: orders table mein insert karo
-                int orderId;
-                using (var cmd = new NpgsqlCommand(@"
-                    INSERT INTO orders 
-                        (userid, first_name, last_name, email, mobile, pincode, 
-                         address, city, state, country, total_items, grand_total, payment_method)
-                    VALUES 
-                        (@UserId, @FirstName, @LastName, @Email, @Mobile, @Pincode,
-                         @Address, @City, @State, @Country, @TotalItems, @GrandTotal, @PaymentMethod)
-                    RETURNING id;
-                ", connection, transaction))
-                {
-                    cmd.Parameters.AddWithValue("@UserId", userId);
-                    cmd.Parameters.AddWithValue("@FirstName", request.FirstName);
-                    cmd.Parameters.AddWithValue("@LastName", request.LastName);
-                    cmd.Parameters.AddWithValue("@Email", request.Email);
-                    cmd.Parameters.AddWithValue("@Mobile", request.Mobile);
-                    cmd.Parameters.AddWithValue("@Pincode", request.Pincode);
-                    cmd.Parameters.AddWithValue("@Address", request.Address);
-                    cmd.Parameters.AddWithValue("@City", request.City);
-                    cmd.Parameters.AddWithValue("@State", request.State);
-                    cmd.Parameters.AddWithValue("@Country", request.Country ?? "India");
-                    cmd.Parameters.AddWithValue("@TotalItems", items.Count);
-                    cmd.Parameters.AddWithValue("@GrandTotal", grandTotal);
-                    cmd.Parameters.AddWithValue("@PaymentMethod", request.PaymentMethod ?? "COD");
+                // =====================================
+                // CREATE ORDER
+                // =====================================
 
-                    orderId = (int)(await cmd.ExecuteScalarAsync() ?? 0);
+                int orderId;
+
+                using (
+                    var cmd =
+                        new NpgsqlCommand(@"
+INSERT INTO orders
+(
+    userid,
+
+    first_name,
+    last_name,
+    email,
+    mobile,
+
+    pincode,
+    address,
+    city,
+    state,
+    country,
+
+    total_items,
+    grand_total,
+
+    payment_method
+)
+
+VALUES
+(
+    @UserId,
+
+    @FirstName,
+    @LastName,
+    @Email,
+    @Mobile,
+
+    @Pincode,
+    @Address,
+    @City,
+    @State,
+    @Country,
+
+    @TotalItems,
+    @GrandTotal,
+
+    @PaymentMethod
+)
+
+RETURNING id;
+", connection, transaction)
+                )
+                {
+                    cmd.Parameters.AddWithValue(
+                        "@UserId",
+                        userId
+                    );
+
+                    cmd.Parameters.AddWithValue(
+                        "@FirstName",
+                        request.FirstName
+                    );
+
+                    cmd.Parameters.AddWithValue(
+                        "@LastName",
+                        request.LastName
+                    );
+
+                    cmd.Parameters.AddWithValue(
+                        "@Email",
+                        request.Email
+                    );
+
+                    cmd.Parameters.AddWithValue(
+                        "@Mobile",
+                        request.Mobile
+                    );
+
+                    cmd.Parameters.AddWithValue(
+                        "@Pincode",
+                        request.Pincode
+                    );
+
+                    cmd.Parameters.AddWithValue(
+                        "@Address",
+                        request.Address
+                    );
+
+                    cmd.Parameters.AddWithValue(
+                        "@City",
+                        request.City
+                    );
+
+                    cmd.Parameters.AddWithValue(
+                        "@State",
+                        request.State
+                    );
+
+                    cmd.Parameters.AddWithValue(
+                        "@Country",
+                        request.Country ?? "India"
+                    );
+
+                    cmd.Parameters.AddWithValue(
+                        "@TotalItems",
+                        items.Count
+                    );
+
+                    cmd.Parameters.AddWithValue(
+                        "@GrandTotal",
+                        grandTotal
+                    );
+
+                    cmd.Parameters.AddWithValue(
+                        "@PaymentMethod",
+                        request.PaymentMethod ?? "COD"
+                    );
+
+                    orderId =
+                        Convert.ToInt32(
+                            await cmd.ExecuteScalarAsync()
+                        );
                 }
 
-                // Step 2: order_items mein har product insert karo
+                // =====================================
+                // INSERT ORDER ITEMS
+                // =====================================
+
                 foreach (var item in items)
                 {
-                    using var itemCmd = new NpgsqlCommand(@"
-                        INSERT INTO order_items 
-                            (order_id, product_id, product_name, image, price, discount_price, quantity, total_price)
-                        VALUES 
-                            (@OrderId, @ProductId, @ProductName, @Image, @Price, @DiscountPrice, @Quantity, @TotalPrice);
-                    ", connection, transaction);
+                    int? categoryId = null;
+                    int? subCategoryId = null;
+                    int? childCategoryId = null;
 
-                    itemCmd.Parameters.AddWithValue("@OrderId", orderId);
-                    itemCmd.Parameters.AddWithValue("@ProductId", item.productid);
-                    //itemCmd.Parameters.AddWithValue("@ProductName", item.ProductName);
-                    itemCmd.Parameters.AddWithValue("@Image", (object?)item.Image ?? DBNull.Value);
-                    //itemCmd.Parameters.AddWithValue("@Price", item.Price);
-                    //itemCmd.Parameters.AddWithValue("@DiscountPrice", (object?)item.DiscountPrice ?? DBNull.Value);
-                    itemCmd.Parameters.AddWithValue("@Quantity", item.quantity);
-                    itemCmd.Parameters.AddWithValue("@TotalPrice", item.totalprice);
+                    int[]? sizeIds = null;
+                    int[]? colorIds = null;
+
+                    // =================================
+                    // PRODUCT DATA
+                    // =================================
+
+                    var productCmd =
+                        new NpgsqlCommand(@"
+SELECT
+
+    categoryid,
+    subcategoryid,
+    childcategoryid,
+
+    sizeids,
+    colorids
+
+FROM product
+
+WHERE id=@pid
+", connection, transaction);
+
+                    productCmd.Parameters.AddWithValue(
+                        "@pid",
+                        item.productid!
+                    );
+
+                    using (
+                        var reader =
+                            await productCmd.ExecuteReaderAsync()
+                    )
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            categoryId =
+                                reader["categoryid"] as int?;
+
+                            subCategoryId =
+                                reader["subcategoryid"] as int?;
+
+                            childCategoryId =
+                                reader["childcategoryid"] as int?;
+
+                            sizeIds =
+                                reader["sizeids"]
+                                as int[];
+
+                            colorIds =
+                                reader["colorids"]
+                                as int[];
+                        }
+                    }
+
+                    // =================================
+                    // INSERT ORDER ITEM
+                    // =================================
+
+                    using var itemCmd =
+                        new NpgsqlCommand(@"
+INSERT INTO order_items
+(
+    order_id,
+
+    product_id,
+    variant_ids,
+
+    product_name,
+    image,
+
+    price,
+    discount_price,
+
+    quantity,
+    total_price,
+
+    category_id,
+    subcategory_id,
+    childcategory_id,
+
+    size_ids,
+    color_ids
+)
+
+VALUES
+(
+    @OrderId,
+
+    @ProductId,
+    @VariantIds,
+
+    @ProductName,
+    @Image,
+
+    @Price,
+    @DiscountPrice,
+
+    @Quantity,
+    @TotalPrice,
+
+    @CategoryId,
+    @SubCategoryId,
+    @ChildCategoryId,
+
+    @SizeIds,
+    @ColorIds
+)
+", connection, transaction);
+
+                    itemCmd.Parameters.AddWithValue(
+                        "@OrderId",
+                        orderId
+                    );
+
+                    itemCmd.Parameters.AddWithValue(
+                        "@ProductId",
+                        item.productid!
+                    );
+
+                    itemCmd.Parameters.AddWithValue(
+                        "@VariantIds",
+                        (object?)item.variantids
+                        ?? DBNull.Value
+                    );
+
+                    itemCmd.Parameters.AddWithValue(
+                        "@ProductName",
+                        item.Name ?? ""
+                    );
+
+                    itemCmd.Parameters.AddWithValue(
+                        "@Image",
+                        (object?)item.Image
+                        ?? DBNull.Value
+                    );
+
+                    itemCmd.Parameters.AddWithValue(
+                        "@Price",
+                        item.Price
+                    );
+
+                    itemCmd.Parameters.AddWithValue(
+                        "@DiscountPrice",
+                        item.Price
+                    );
+
+                    itemCmd.Parameters.AddWithValue(
+                        "@Quantity",
+                        item.quantity
+                    );
+
+                    itemCmd.Parameters.AddWithValue(
+                        "@TotalPrice",
+                        item.totalprice
+                    );
+
+                    itemCmd.Parameters.AddWithValue(
+                        "@CategoryId",
+                        (object?)categoryId
+                        ?? DBNull.Value
+                    );
+
+                    itemCmd.Parameters.AddWithValue(
+                        "@SubCategoryId",
+                        (object?)subCategoryId
+                        ?? DBNull.Value
+                    );
+
+                    itemCmd.Parameters.AddWithValue(
+                        "@ChildCategoryId",
+                        (object?)childCategoryId
+                        ?? DBNull.Value
+                    );
+
+                    itemCmd.Parameters.AddWithValue(
+                        "@SizeIds",
+                        (object?)sizeIds
+                        ?? DBNull.Value
+                    );
+
+                    itemCmd.Parameters.AddWithValue(
+                        "@ColorIds",
+                        (object?)colorIds
+                        ?? DBNull.Value
+                    );
 
                     await itemCmd.ExecuteNonQueryAsync();
                 }
 
-                // Step 3: Cart clear karo
-                using (var clearCmd = new NpgsqlCommand(
-                    "DELETE FROM addtocart WHERE userid = @UserId", connection, transaction))
+                // =====================================
+                // CLEAR CART
+                // =====================================
+
+                using (
+                    var clearCmd =
+                        new NpgsqlCommand(@"
+DELETE FROM addtocart
+WHERE userid=@uid
+", connection, transaction)
+                )
                 {
-                    clearCmd.Parameters.AddWithValue("@UserId", userId);
+                    clearCmd.Parameters.AddWithValue(
+                        "@uid",
+                        userId
+                    );
+
                     await clearCmd.ExecuteNonQueryAsync();
                 }
 
@@ -251,34 +540,31 @@ public async Task<IActionResult> GetAllOrders()
                 return new OkObjectResult(new
                 {
                     status = true,
-                    message = "Order successfully place ho gaya!",
+
+                    message =
+                        "Order placed successfully",
+
                     orderId = orderId,
-                    totalItems = items.Count,
-                    grandTotal = grandTotal,
-                    paymentMethod = request.PaymentMethod,
-                    shippingAddress = new
-                    {
-                        name = $"{request.FirstName} {request.LastName}",
-                        email = request.Email,
-                        mobile = request.Mobile,
-                        address = request.Address,
-                        city = request.City,
-                        state = request.State,
-                        pincode = request.Pincode,
-                        country = request.Country
-                    }
+
+                    totalItems =
+                        items.Count,
+
+                    grandTotal =
+                        grandTotal
                 });
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+
                 return new ObjectResult(new
                 {
                     status = false,
-                    message = "Order place karne mein error aaya.",
                     error = ex.Message
                 })
-                { StatusCode = 500 };
+                {
+                    StatusCode = 500
+                };
             }
         }
 
@@ -334,150 +620,299 @@ public async Task<IActionResult> GetAllOrders()
         }
 
         // ✅ GET ORDER DETAIL
-        public async Task<IActionResult> GetOrderDetail(int userId, int orderId)
+       public async Task<IActionResult> GetOrderDetail(
+    int userId,
+    int orderId
+)
+{
+    using var connection =
+        new NpgsqlConnection(this.DbConnection);
+
+    await connection.OpenAsync();
+
+    object? order = null;
+
+    // =====================================
+    // ORDER
+    // =====================================
+
+    using (
+        var cmd =
+            new NpgsqlCommand(@"
+SELECT *
+
+FROM orders
+
+WHERE id=@oid
+AND userid=@uid
+", connection)
+    )
+    {
+        cmd.Parameters.AddWithValue(
+            "@oid",
+            orderId
+        );
+
+        cmd.Parameters.AddWithValue(
+            "@uid",
+            userId
+        );
+
+        using var reader =
+            await cmd.ExecuteReaderAsync();
+
+        if (await reader.ReadAsync())
         {
-            using var connection = new NpgsqlConnection(this.DbConnection);
-            await connection.OpenAsync();
-
-            // =========================
-            // ORDER DETAILS
-            // =========================
-            object? order = null;
-
-            using (var cmd = new NpgsqlCommand(@"
-        SELECT 
-            id, userid, first_name, last_name, email, mobile,
-            pincode, address, city, state, country,
-            total_items, grand_total, payment_method, order_status, created_at
-        FROM orders
-        WHERE id = @OrderId AND userid = @UserId;
-    ", connection))
+            order = new
             {
-                cmd.Parameters.AddWithValue("@OrderId", orderId);
-                cmd.Parameters.AddWithValue("@UserId", userId);
+                id = reader.GetInt32(
+                    reader.GetOrdinal("id")
+                ),
 
-                using var reader = await cmd.ExecuteReaderAsync();
+                grandTotal =
+                    reader.GetDecimal(
+                        reader.GetOrdinal(
+                            "grand_total"
+                        )
+                    ),
 
-                if (await reader.ReadAsync())
-                {
-                    order = new
-                    {
-                        id = reader.GetInt32("id"),
-                        firstName = reader.GetString("first_name"),
-                        lastName = reader.GetString("last_name"),
-                        email = reader.GetString("email"),
-                        mobile = reader.GetString("mobile"),
-                        pincode = reader.GetString("pincode"),
-                        address = reader.GetString("address"),
-                        city = reader.GetString("city"),
-                        state = reader.GetString("state"),
-                        country = reader.GetString("country"),
-                        totalItems = reader.GetInt32("total_items"),
-                        grandTotal = reader.GetDecimal("grand_total"),
-                        paymentMethod = reader.GetString("payment_method"),
-                        orderStatus = reader.GetString("order_status"),
-                        createdAt = reader.GetDateTime("created_at")
-                    };
-                }
-            }
+                orderStatus =
+                    reader["order_status"]
+                    ?.ToString(),
 
-            if (order == null)
-            {
-                return new NotFoundObjectResult(new
-                {
-                    status = false,
-                    message = "Order nahi mila."
-                });
-            }
+                paymentMethod =
+                    reader["payment_method"]
+                    ?.ToString(),
 
-            // =========================
-            // ORDER ITEMS WITH FULL JOIN
-            // =========================
-            var items = new List<object>();
+                createdAt =
+                    reader.GetDateTime(
+                        reader.GetOrdinal(
+                            "created_at"
+                        )
+                    )
+            };
+        }
+    }
 
-            using (var itemCmd = new NpgsqlCommand(@"
-        SELECT 
-            oi.id,
-            oi.product_id,
-            oi.product_name,
-            oi.image,
-            oi.price,
-            oi.discount_price,
-            oi.quantity,
-            oi.total_price,
+    if (order == null)
+    {
+        return new NotFoundObjectResult(new
+        {
+            status = false,
+            message = "Order not found"
+        });
+    }
 
-            b.brandname,
+    // =====================================
+    // ORDER ITEMS
+    // =====================================
 
-            c.""Name"" AS categoryname,
-            sc.""SubCategoryName"" AS SubCategoryName,
-            cc.""ChildCategoryName"" AS childcategoryname,
+    var items =
+        new List<object>();
 
-            -- Size names
+    using (
+        var itemCmd =
+            new NpgsqlCommand(@"
+SELECT
+
+    oi.*,
+
+    b.brandname,
+
+    c.""Name"" AS categoryname,
+
+    sc.""SubCategoryName""
+    AS subcategoryname,
+
+    cc.""ChildCategoryName""
+    AS childcategoryname,
+
+(
+    SELECT json_agg(
+        json_build_object(
+
+            'id',
+            v.id,
+
+            'variantname',
+            v.variantname,
+
+            'price',
+            v.price,
+
+            'discountprice',
+            v.discountprice,
+
+            'image',
+            v.image,
+
+            -- SIZE NAMES
+
+            'sizes',
             (
                 SELECT array_agg(s.size_name)
+
                 FROM sizes s
-                WHERE s.id = ANY(p.sizeids)
-            ) AS sizenames,
 
-            -- Color names
+                WHERE s.id = ANY(v.sizeid)
+            ),
+
+            -- COLOR NAMES
+
+            'colors',
             (
-                SELECT array_agg(cl.colorname)
-                FROM color cl
-                WHERE cl.id = ANY(p.colorids)
-            ) AS colornames
+                SELECT array_agg(c.colorname)
 
-        FROM order_items oi
-        JOIN product p ON p.id = oi.product_id
+                FROM color c
 
-        LEFT JOIN brand b ON b.id = p.brandid
+                WHERE c.id = ANY(v.colorid)
+            )
+        )
+    )
 
-        LEFT JOIN category c ON c.""Id"" = p.categoryid
-        LEFT JOIN subcategory sc ON sc.""Id"" = p.subcategoryid
-        LEFT JOIN childcategory cc ON cc.""Id"" = p.childcategoryid
+    FROM variant v
 
-        WHERE oi.order_id = @OrderId
-        ORDER BY oi.id ASC;
-    ", connection))
+    WHERE v.id = ANY(oi.variant_ids)
+
+) AS variants,
+
+    (
+        SELECT array_agg(s.size_name)
+        FROM sizes s
+        WHERE s.id = ANY(oi.size_ids)
+    ) AS sizenames,
+
+    (
+        SELECT array_agg(cl.colorname)
+        FROM color cl
+        WHERE cl.id = ANY(oi.color_ids)
+    ) AS colornames
+
+FROM order_items oi
+
+JOIN product p
+ON p.id = oi.product_id
+
+LEFT JOIN brand b
+ON b.id = p.brandid
+
+LEFT JOIN category c
+ON c.""Id"" = p.categoryid
+
+LEFT JOIN subcategory sc
+ON sc.""Id"" = p.subcategoryid
+
+LEFT JOIN childcategory cc
+ON cc.""Id"" = p.childcategoryid
+
+WHERE oi.order_id=@oid
+
+ORDER BY oi.id ASC
+", connection)
+    )
+    {
+        itemCmd.Parameters.AddWithValue(
+            "@oid",
+            orderId
+        );
+
+        using var itemReader =
+            await itemCmd.ExecuteReaderAsync();
+
+        while (
+            await itemReader.ReadAsync()
+        )
+        {
+            items.Add(new
             {
-                itemCmd.Parameters.AddWithValue("@OrderId", orderId);
+                id = itemReader.GetInt32(
+                    itemReader.GetOrdinal("id")
+                ),
 
-                using var itemReader = await itemCmd.ExecuteReaderAsync();
+                productId =
+                    itemReader.GetInt32(
+                        itemReader.GetOrdinal(
+                            "product_id"
+                        )
+                    ),
 
-                while (await itemReader.ReadAsync())
-                {
-                    items.Add(new
-                    {
-                        id = itemReader.GetInt32("id"),
-                        productId = itemReader.GetInt32("product_id"),
-                        productName = itemReader.GetString("product_name"),
-                        image = itemReader["image"]?.ToString(),
-                        price = itemReader.GetDecimal("price"),
-                        discountPrice = itemReader["discount_price"] as decimal?,
-                        quantity = itemReader.GetInt32("quantity"),
-                        totalPrice = itemReader.GetDecimal("total_price"),
+                variantIds =
+                    itemReader["variant_ids"]
+                    as int[],
 
-                        brandName = itemReader["brandname"]?.ToString(),
+                productName =
+                    itemReader["product_name"]
+                    ?.ToString(),
 
-                        // ✅ CATEGORY DATA
-                        categoryName = itemReader["categoryname"]?.ToString(),
-                        subCategoryName = itemReader["subcategoryname"]?.ToString(),
-                        childCategoryName = itemReader["childcategoryname"]?.ToString(),
+                image =
+                    itemReader["image"]
+                    ?.ToString(),
 
-                        sizeNames = itemReader["sizenames"] as string[],
-                        colorNames = itemReader["colornames"] as string[]
-                    });
-                }
-            }
+                price =
+                    itemReader.GetDecimal(
+                        itemReader.GetOrdinal(
+                            "price"
+                        )
+                    ),
 
-            // ============================
-            // FINAL RESPONSE
-            // =========================
-            return new OkObjectResult(new
-            {
-                status = true,
-                order = order,
-                orderItems = items
+                discountPrice =
+                    itemReader["discount_price"]
+                    as decimal?,
+
+                quantity =
+                    itemReader.GetInt32(
+                        itemReader.GetOrdinal(
+                            "quantity"
+                        )
+                    ),
+
+                totalPrice =
+                    itemReader.GetDecimal(
+                        itemReader.GetOrdinal(
+                            "total_price"
+                        )
+                    ),
+
+                brandName =
+                    itemReader["brandname"]
+                    ?.ToString(),
+
+                categoryName =
+                    itemReader["categoryname"]
+                    ?.ToString(),
+
+                subCategoryName =
+                    itemReader["subcategoryname"]
+                    ?.ToString(),
+
+                childCategoryName =
+                    itemReader["childcategoryname"]
+                    ?.ToString(),
+
+                sizeNames =
+                    itemReader["sizenames"]
+                    as string[],
+
+                colorNames =
+                    itemReader["colornames"]
+                    as string[],
+
+                variants =
+    itemReader["variants"] == DBNull.Value
+    ? null
+    : System.Text.Json.JsonSerializer.Deserialize<object>(
+        itemReader["variants"].ToString()!
+    )
             });
         }
+    }
+
+    return new OkObjectResult(new
+    {
+        status = true,
+        order = order,
+        orderItems = items
+    });
+}
     }
 }
