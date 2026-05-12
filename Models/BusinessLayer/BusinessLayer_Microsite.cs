@@ -10,7 +10,7 @@ namespace firstproject.Models.BusinessLayer
         //========================== MicroSite =================================== 
         Task<List<MicrositeModel>> GetMicrosite();
         Task<MicrositeModel> GetMicrositeById(long id);
-        Task<string> CreateMicrosite(MicrositeModel model);
+        Task<MicrositeModel> CreateMicrosite(MicrositeModel model);
         Task<string> UpdateMicrosite(long id, MicrositeModel model);
         Task<string> DeleteMicrosite(long id);
         ////================================================================Assign Products MicroSites Task Start ===============================================================
@@ -32,7 +32,7 @@ namespace firstproject.Models.BusinessLayer
         {
             return await _databaseLayer.GetMicrositeById(id);
         }
-        public async Task<string> CreateMicrosite(MicrositeModel model)
+        public async Task<MicrositeModel> CreateMicrosite(MicrositeModel model)
         {
             return await _databaseLayer.CreateMicrosite(model);
         }

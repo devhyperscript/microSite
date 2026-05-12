@@ -18,7 +18,7 @@ namespace firstproject.Models.DatabaseLayer
         //================================================================Task MicroSite Task ============================================================== 
         Task<List<MicrositeModel>> GetMicrosite();
         Task<MicrositeModel> GetMicrositeById(long id);
-        Task<string> CreateMicrosite(MicrositeModel model);
+        Task<MicrositeModel> CreateMicrosite(MicrositeModel model);
         Task<string> UpdateMicrosite(long id, MicrositeModel model);
         Task<string> DeleteMicrosite(long id);
 
@@ -107,9 +107,6 @@ CREATE TABLE IF NOT EXISTS assign_product (
 
             var micrositeDict = new Dictionary<long, MicrositeModel>();
 
-            // 🔥 Get Base URL from appsettings
-            string baseUrl = _configuration["BaseUrl"] ?? "";
-
             while (await reader.ReadAsync())
             {
                 var id = reader.GetInt64(reader.GetOrdinal("id"));
@@ -119,10 +116,7 @@ CREATE TABLE IF NOT EXISTS assign_product (
                     var uniqueId = reader["unique_id"]?.ToString();
                     var dbUrl = reader["url"]?.ToString();
 
-                    // ✅ FIX: Generate correct URL if missing or wrong
-                    string finalUrl = string.IsNullOrEmpty(dbUrl) || dbUrl.Contains("string demoUrl")
-                        ? $"{baseUrl}/demo/microsite/{uniqueId}"
-                        : dbUrl;
+                    var finalUrl = BuildMicrositeRuntimeUrl(uniqueId, dbUrl);
 
                     micrositeDict[id] = new MicrositeModel
                     {
@@ -210,6 +204,8 @@ CREATE TABLE IF NOT EXISTS assign_product (
                 m.logo_image,
                 m.banner_image,
                 m.favicon,
+                m.url,
+                m.unique_id,
                 m.start_date,
                 m.end_date,
                 m.status,
@@ -247,6 +243,9 @@ CREATE TABLE IF NOT EXISTS assign_product (
             {
                 if (microsite == null)
                 {
+                    var uniqueId = reader["unique_id"]?.ToString();
+                    var dbUrl = reader["url"]?.ToString();
+
                     microsite = new MicrositeModel
                     {
                         Id = reader.GetInt64(reader.GetOrdinal("id")),
@@ -260,6 +259,8 @@ CREATE TABLE IF NOT EXISTS assign_product (
                         LogoImage = reader["logo_image"]?.ToString(),
                         BannerImage = reader["banner_image"]?.ToString(),
                         Favicon = reader["favicon"]?.ToString(),
+                        UniqueId = uniqueId,
+                        Url = BuildMicrositeRuntimeUrl(uniqueId, dbUrl),
 
                         StartDate = reader.IsDBNull(reader.GetOrdinal("start_date"))
                             ? null
@@ -304,7 +305,7 @@ CREATE TABLE IF NOT EXISTS assign_product (
             return microsite;
         }
 
-        public async Task<string> CreateMicrosite(MicrositeModel model)
+        public async Task<MicrositeModel> CreateMicrosite(MicrositeModel model)
         {
             using var conn = new NpgsqlConnection(DbConnection);
             await conn.OpenAsync();
@@ -313,25 +314,11 @@ CREATE TABLE IF NOT EXISTS assign_product (
 
             try
             {
-                // ================= GENERATE UNIQUE URL =================
-                string baseUrl = string.IsNullOrWhiteSpace(model.Url) ? "microsite" : model.Url;
-                string finalUrl = baseUrl;
-                int counter = 1;
-
-                while (true)
-                {
-                    var checkCmd = new NpgsqlCommand("SELECT COUNT(1) FROM microsites WHERE url=@url", conn, transaction);
-                    checkCmd.Parameters.AddWithValue("@url", finalUrl);
-
-                    var exists = (long)await checkCmd.ExecuteScalarAsync();
-
-                    if (exists == 0) break;
-
-                    finalUrl = $"{baseUrl}-{counter}";
-                    counter++;
-                }
-
-                model.Url = finalUrl;
+                // Use deterministic UUID and generated microsite URL for this project format.
+                var micrositeUniqueId = Guid.NewGuid();
+                var uniqueIdText = micrositeUniqueId.ToString("N");
+                model.UniqueId = uniqueIdText;
+                model.Url = BuildMicrositeRuntimeUrl(uniqueIdText, null);
 
                 // ================= IMAGE UPLOAD (S3) =================
 
@@ -357,12 +344,12 @@ CREATE TABLE IF NOT EXISTS assign_product (
                 string sql = @"INSERT INTO microsites
                 (name,slug,heading,content,address,email,mobile,
                 logo_image,banner_image,favicon,
-                start_date,end_date,status,url)
+                unique_id,start_date,end_date,status,url)
                 VALUES
                 (@name,@slug,@heading,@content,@address,@email,@mobile,
                 @logo,@banner,@favicon,
-                @start,@end,@status,@url)
-                RETURNING id";
+                @unique_id,@start,@end,@status,@url)
+                RETURNING id, unique_id::text, url";
 
                 using var cmd = new NpgsqlCommand(sql, conn, transaction);
 
@@ -376,12 +363,21 @@ CREATE TABLE IF NOT EXISTS assign_product (
                 cmd.Parameters.AddWithValue("@logo", model.LogoImage ?? "");
                 cmd.Parameters.AddWithValue("@banner", model.BannerImage ?? "");
                 cmd.Parameters.AddWithValue("@favicon", model.Favicon ?? "");
+                cmd.Parameters.AddWithValue("@unique_id", micrositeUniqueId);
                 cmd.Parameters.AddWithValue("@start", model.StartDate ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@end", model.EndDate ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@status", model.Status);
                 cmd.Parameters.AddWithValue("@url", model.Url ?? "");
 
-                var micrositeId = (long)await cmd.ExecuteScalarAsync();
+                long micrositeId;
+
+                using (var insertReader = await cmd.ExecuteReaderAsync())
+                {
+                    await insertReader.ReadAsync();
+                    micrositeId = insertReader.GetInt64(0);
+                    model.UniqueId = insertReader.GetString(1).Replace("-", "");
+                    model.Url = insertReader.GetString(2);
+                }
 
                 // ================= DOMAINS =================
 
@@ -447,7 +443,17 @@ CREATE TABLE IF NOT EXISTS assign_product (
 
                 await transaction.CommitAsync();
 
-                return "Microsite Created Successfully";
+                model.Id = micrositeId;
+
+                return new MicrositeModel
+                {
+                    Id = model.Id,
+                    Name = model.Name,
+                    Slug = model.Slug,
+                    UniqueId = model.UniqueId,
+                    Url = model.Url,
+                    Status = model.Status
+                };
             }
             catch (Exception)
             {
@@ -795,6 +801,24 @@ CREATE TABLE IF NOT EXISTS assign_product (
                 await S3StorageHelper.DeleteStoredMediaAsync(oldNorm);
 
             return uploaded;
+        }
+
+        private string BuildMicrositeRuntimeUrl(string? uniqueId, string? dbUrl)
+        {
+            if (!string.IsNullOrWhiteSpace(dbUrl) && dbUrl.Contains("microsite_id=", StringComparison.OrdinalIgnoreCase))
+            {
+                return dbUrl;
+            }
+
+            if (string.IsNullOrWhiteSpace(uniqueId))
+            {
+                return dbUrl ?? string.Empty;
+            }
+
+            var micrositeBaseUrl = _configuration["MicrositePublicBaseUrl"]
+                ?? "http://localhost/main_final_original/microsite/micro_index.php";
+
+            return $"{micrositeBaseUrl}?microsite_id={uniqueId.Replace("-", "")}";
         }
 
         public async Task<string> DeleteMicrosite(long id)

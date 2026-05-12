@@ -72,7 +72,13 @@ namespace firstproject.Controllers
 
                 var result = await _businessLayer.CreateMicrosite(model);
 
-                return Ok(new { message = result });
+                return Ok(new
+                {
+                    message = "Microsite Created Successfully",
+                    micrositeId = result.Id,
+                    uniqueId = result.UniqueId,
+                    micrositeUrl = result.Url
+                });
             }
             catch (Exception ex)
             {

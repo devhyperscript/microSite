@@ -288,7 +288,7 @@ CREATE TABLE microsites (
     banner_image TEXT,
     favicon TEXT,
 
-    unique_id UUID DEFAULT gen_random_uuid(),
+    unique_id UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
 
     start_date DATE,
     end_date DATE,
@@ -297,8 +297,12 @@ CREATE TABLE microsites (
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    url TEXT UNIQUE
+    url TEXT NOT NULL UNIQUE
 );
+
+-- Existing databases can be aligned with:
+-- ALTER TABLE microsites ALTER COLUMN unique_id SET NOT NULL;
+-- ALTER TABLE microsites ALTER COLUMN url SET NOT NULL;
 
 CREATE TABLE microsite_domains (
     id BIGSERIAL PRIMARY KEY,

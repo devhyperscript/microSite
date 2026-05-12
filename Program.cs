@@ -69,17 +69,27 @@ builder.Services.AddAuthentication(options =>
 });
 
 // ===================== CORS =====================
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+if (corsOrigins == null || corsOrigins.Length == 0)
+{
+    corsOrigins =
+    [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost",
+        "https://localhost:7161",
+        "http://microsite.workarya.com",
+        "https://microsite.workarya.com",
+        "http://microsite_backend.workarya.com",
+        "https://microsite_backend.workarya.com"
+    ];
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:5173",
-                "http://localhost:3000",
-                "http://localhost",
-                "http://microsite.workarya.com",
-                "https://microsite.workarya.com"
-            )
+        policy.WithOrigins(corsOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
